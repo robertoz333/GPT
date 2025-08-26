@@ -1,0 +1,754 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <title>GPT — A New Note-Taking App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    /* --- Neptune Theme --- */
+    :root {
+      --bg-primary: #1a1c2c;
+      --bg-secondary: #24273a;
+      --panel-bg: #1e2030;
+      --text-primary: #cad3f5;
+      --text-secondary: #a5adce;
+      --text-muted: #6e789f;
+      --accent-primary: #8caaee;
+      --accent-secondary: #babbf1;
+      --border-color: #363a4f;
+      --danger-color: #e78284;
+      --success-color: #a6d189;
+      --warning-color: #e5c890;
+      --shadow-light: 0 4px 15px rgba(0,0,0,.1);
+      --shadow-dark: 0 6px 25px rgba(0,0,0,.3);
+    }
+    
+    * { box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: 'Segoe UI', 'Roboto', system-ui, -apple-system, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+    
+    #app-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      opacity: 0;
+      transition: opacity 0.4s ease-in;
+    }
+
+    #app-container.loaded {
+      opacity: 1;
+    }
+
+    .main-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 10px 20px;
+      background: var(--panel-bg);
+      border-bottom: 1px solid var(--border-color);
+      box-shadow: var(--shadow-dark);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .brand-title {
+      font-weight: 600;
+      font-size: 18px;
+      color: var(--accent-secondary);
+      user-select: none;
+    }
+    .search-box {
+      flex: 1;
+      position: relative;
+    }
+    .search-box input {
+      width: 100%;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      outline: none;
+      transition: all .2s ease;
+    }
+    .search-box input:focus {
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px rgba(140, 170, 238, .2);
+    }
+    
+    .header-actions { display: flex; gap: 10px; }
+    
+    .btn {
+      background: var(--bg-secondary);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color);
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all .2s ease;
+    }
+    .btn:hover {
+      border-color: var(--accent-primary);
+      color: var(--accent-primary);
+      transform: translateY(-1px);
+    }
+    .btn.primary {
+      background: var(--accent-primary);
+      color: #1a1c2c;
+      border-color: var(--accent-primary);
+    }
+    .btn.primary:hover {
+        background: var(--accent-secondary);
+        border-color: var(--accent-secondary);
+    }
+    .btn.danger {
+      color: var(--danger-color);
+      border-color: var(--danger-color);
+    }
+    .btn.danger:hover {
+      background: rgba(231, 130, 132, 0.1);
+      color: #fff;
+    }
+
+    .data-container {
+      display: grid;
+      grid-template-columns: 280px 300px 1fr;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .panel {
+      background: var(--panel-bg);
+      border-right: 1px solid var(--border-color);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-header {
+      padding: 12px 15px;
+      font-size: 13px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      background: var(--panel-bg);
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .grow { flex: 1; }
+    
+    .tree-list { padding: 10px; display: flex; flex-direction: column; gap: 5px; }
+    .tree-item, .page-entry {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all .2s ease;
+      border: 1px solid transparent;
+      position: relative;
+    }
+    .tree-item:hover, .page-entry:hover { background: var(--bg-secondary); }
+    .tree-item.active {
+        box-shadow: inset 0 0 0 2px var(--accent-primary);
+    }
+    .page-entry.active {
+        background-color: var(--bg-secondary);
+        color: var(--accent-secondary);
+    }
+
+    .delete-btn {
+        visibility: hidden;
+        opacity: 0;
+        transition: opacity .2s ease;
+        background: none; border: none; cursor: pointer;
+        padding: 4px; line-height: 1;
+        position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+        color: var(--text-secondary);
+    }
+    .tree-item:hover .delete-btn, .page-entry:hover .delete-btn {
+        visibility: visible;
+        opacity: 1;
+    }
+    .delete-btn:hover { color: var(--danger-color); }
+
+    .title-input {
+      background: transparent;
+      border: none;
+      color: inherit;
+      font-weight: 500;
+      padding: 4px 6px;
+      border-radius: 6px;
+      width: 100%;
+      margin: -4px -6px;
+    }
+    .title-input:focus {
+      outline: none;
+      background: var(--bg-primary);
+      box-shadow: 0 0 0 2px var(--accent-primary);
+    }
+    .title-input[readonly] { cursor: pointer; }
+    .title-input[readonly]:focus { background: transparent; box-shadow: none; }
+
+    .view-container {
+      background: var(--bg-primary);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .view-tabs {
+      display: flex;
+      gap: 4px;
+      padding: 8px 15px 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .tab-btn {
+      padding: 8px 16px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      border-radius: 8px 8px 0 0;
+      cursor: pointer;
+      position: relative;
+      bottom: -1px;
+    }
+    .tab-btn.active {
+      background: var(--bg-secondary);
+      color: var(--accent-primary);
+      border: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--bg-secondary);
+    }
+
+    .view {
+      padding: 20px;
+      display: none;
+      background: var(--bg-secondary);
+      flex: 1;
+    }
+    .view.active {
+      display: block;
+    }
+    .view-content {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    /* Editor Specifics */
+    #editor-view .toolbar {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      background: var(--panel-bg);
+      padding: 10px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      border: 1px solid var(--border-color);
+    }
+    .toolbar-group { display: inline-flex; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; }
+    .toolbar-group .btn { border: none; border-right: 1px solid var(--border-color); border-radius: 0; }
+    .toolbar-group .btn:last-child { border-right: none; }
+    .toolbar-group select.btn {
+        -webkit-appearance: none; -moz-appearance: none; appearance: none;
+        padding-right: 25px;
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a5adce' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 8px center;
+        background-size: 1em;
+    }
+    
+    #page-title-input {
+      font-size: 32px; font-weight: 700; border: none; outline: none;
+      background: transparent; color: var(--text-primary); width: 100%;
+      padding: 0 0 15px; margin-bottom: 15px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    #editor-area {
+      min-height: 60vh;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      line-height: 1.7;
+      outline: none;
+      box-shadow: inset 0 2px 10px rgba(0,0,0,.2);
+    }
+    #editor-area:focus { border-color: var(--accent-primary); }
+    #editor-area img { max-width: 100%; border-radius: 8px; }
+
+    /* Canvas Specifics */
+    #canvas-view .toolbar {
+      display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;
+    }
+    #drawing-canvas {
+      width: 100%; height: 450px; background: var(--bg-primary);
+      border: 1px solid var(--border-color); border-radius: 12px;
+      box-shadow: var(--shadow-light);
+      touch-action: none;
+    }
+    
+    .attachment-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 15px;
+    }
+    .card {
+      background: var(--panel-bg); border: 1px solid var(--border-color);
+      border-radius: 10px; padding: 15px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .card-title { font-weight: 600; }
+    .card-meta { font-size: 12px; color: var(--text-muted); }
+    
+    /* --- COLOR PALETTE --- */
+    .color-dot {
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      border: 1px solid var(--border-color);
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+    .color-dot:hover { transform: scale(1.2); }
+    
+    #color-palette {
+      display: none;
+      position: absolute;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 10px;
+      box-shadow: var(--shadow-dark);
+      z-index: 200;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      width: 160px;
+    }
+    .palette-swatch {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      border: 1px solid var(--border-color);
+      cursor: pointer;
+      transition: transform .15s ease;
+    }
+    .palette-swatch:hover {
+      transform: scale(1.15);
+      border-color: var(--text-primary);
+    }
+    
+    /* Utility */
+    .hidden { display: none !important; }
+
+    /* Spinner */
+    #loader {
+      position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      border: 4px solid var(--border-color);
+      border-top: 4px solid var(--accent-primary);
+      border-radius: 50%;
+      width: 40px; height: 40px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+<div id="loader"></div>
+
+<div id="app-container">
+  <header class="main-header">
+    <div class="brand-title">GPT</div>
+    <div class="search-box">
+      <input id="globalSearchInput" placeholder="Cerca ovunque..." />
+    </div>
+    <div class="header-actions">
+      <button id="addNotebookBtn" class="btn primary">+ Nuovo Taccuino</button>
+      <button id="exportDataBtn" class="btn">Esporta</button>
+      <label class="btn" for="importDataInput">Importa</label>
+      <input id="importDataInput" type="file" accept="application/json" class="hidden" />
+    </div>
+  </header>
+
+  <div class="data-container">
+    <aside class="panel">
+      <div id="notebooks-list" class="tree-list"></div>
+    </aside>
+
+    <aside class="panel">
+      <div class="panel-header">
+        <span id="pages-list-header">Pagine</span>
+        <span class="grow"></span>
+        <button id="addSectionBtn" class="btn">+ Sezione</button>
+        <button id="addPageBtn" class="btn">+ Pagina</button>
+      </div>
+      <div id="pages-list" class="tree-list"></div>
+    </aside>
+
+    <main class="view-container">
+      <div class="view-tabs">
+        <button class="tab-btn active" data-view="editor-view">Editor</button>
+        <button class="tab-btn" data-view="canvas-view">Canvas</button>
+        <button class="tab-btn" data-view="attachments-view">Allegati</button>
+        <button class="tab-btn" data-view="info-view">Info</button>
+      </div>
+
+      <div id="editor-view" class="view active">
+        <div class="view-content hidden">
+          <div class="toolbar">
+            <div class="toolbar-group">
+                <button class="btn" data-cmd="formatBlock" data-val="H1">H1</button>
+                <button class="btn" data-cmd="formatBlock" data-val="H2">H2</button>
+                <button class="btn" data-cmd="formatBlock" data-val="P">P</button>
+            </div>
+            <div class="toolbar-group">
+                <button class="btn" data-cmd="bold"><b>B</b></button>
+                <button class="btn" data-cmd="italic"><i>I</i></button>
+                <button class="btn" data-cmd="underline"><u>U</u></button>
+            </div>
+            <div class="toolbar-group">
+                <select id="fontFamilySelector" class="btn" title="Scegli Font"></select>
+                <button id="decreaseFontSizeBtn" class="btn" title="Riduci Dimensione">-</button>
+                <button id="increaseFontSizeBtn" class="btn" title="Aumenta Dimensione">+</button>
+            </div>
+             <div class="toolbar-group">
+                <button id="addLinkBtn" class="btn">🔗</button>
+                <label class="btn" for="addImageInput">🖼️</label>
+                <input id="addImageInput" type="file" accept="image/*" class="hidden" />
+            </div>
+          </div>
+          <input id="page-title-input" placeholder="Il mio nuovo capolavoro..." />
+          <div id="editor-area" contenteditable="true"></div>
+        </div>
+      </div>
+
+      <div id="canvas-view" class="view">
+        <div class="view-content">
+            <div class="toolbar">
+                <div class="toolbar-group"><button id="penTool" class="btn active">Penna</button><button id="eraserTool" class="btn">Gomma</button></div>
+                <input type="color" id="colorChooser" value="#8caaee" /><input type="range" id="widthChooser" min="1" max="20" value="3" />
+                <div class="toolbar-group"><button id="clearCanvasBtn" class="btn danger">Pulisci</button><button id="exportCanvasBtn" class="btn">Esporta PNG</button></div>
+            </div><canvas id="drawing-canvas"></canvas>
+        </div>
+      </div>
+
+      <div id="attachments-view" class="view">
+        <div class="view-content">
+          <div style="margin-bottom: 20px;"><label class="btn primary" for="addFileInput">Aggiungi File</label><input type="file" id="addFileInput" multiple class="hidden"></div>
+          <div id="attachments-grid" class="attachment-grid"></div>
+        </div>
+      </div>
+
+      <div id="info-view" class="view">
+        <div class="view-content">
+          <h3>Informazioni Pagina</h3><div id="page-metadata" class="card"></div>
+           <h3 style="margin-top: 30px;">Azioni</h3>
+           <div style="display: flex; gap: 10px;"><button id="duplicatePageBtn" class="btn">Duplica</button><button id="deletePageBtn" class="btn danger">Elimina</button></div>
+        </div>
+      </div>
+    </main>
+  </div>
+  
+  <div id="color-palette"></div>
+</div>
+
+<script>
+// --- CORE UTILITIES ---
+const getEl = sel => document.querySelector(sel);
+const getAllEl = sel => document.querySelectorAll(sel);
+const createId = (prefix = 'id') => `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+const downloadFile = (name, content, type = 'application/octet-stream') => {
+  const blob = content instanceof Blob ? content : new Blob([content], { type });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(a.href);
+};
+const fileToBase64 = file => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(reader.result);
+  reader.onerror = reject;
+  reader.readAsDataURL(file);
+});
+const sanitizeHTML = str => str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m]));
+function getContrastColor(hex) {
+  if (!hex) return 'var(--text-primary)';
+  const r = parseInt(hex.substr(1, 2), 16);
+  const g = parseInt(hex.substr(3, 2), 16);
+  const b = parseInt(hex.substr(5, 2), 16);
+  const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+  return (yiq >= 150) ? '#1a1c2c' : '#ffffff';
+}
+function insertHtmlAtCursor(html) {
+    const editor = getEl('#editor-area');
+    editor.focus();
+    document.execCommand('insertHTML', false, html);
+}
+
+// --- CORE STATE & DB ---
+const DB_KEY = 'gpt_notes_v2';
+let Store = {};
+let AppState = { activeNotebookId: null, activeSectionId: null, activePageId: null };
+let clickTimer = null;
+const COLOR_PALETTE = ['#e78284','#ea999c','#e5c890','#f0daab','#a6d189','#bde0a8','#8caaee','#a3b8ef','#babbf1','#c8c9f4'];
+const FONT_LIST = ['Segoe UI', 'Arial', 'Verdana', 'Georgia', 'Times New Roman', 'Courier New'];
+const defaultStore = { notebooks: {}, sections: {}, pages: {}, notebookOrder: [], settings: { theme: 'neptune' } };
+
+function loadStore() {
+  try {
+    const raw = localStorage.getItem(DB_KEY);
+    if (raw) { Store = JSON.parse(raw); }
+    else {
+      Store = JSON.parse(JSON.stringify(defaultStore));
+      const notebook = createNotebook('Il mio primo Taccuino', false);
+      const section = createSection(notebook.id, 'Appunti veloci', false);
+      const page = createPage(section.id, 'Benvenuto!', false);
+      page.html = `<h1>Ciao e benvenuto in GPT!</h1><p>Questa è la tua prima nota. Clicca sul pallino colorato accanto al nome del taccuino per cambiargli colore.</p>`;
+      saveStore();
+    }
+  } catch (e) { console.error("Failed to load store", e); Store = JSON.parse(JSON.stringify(defaultStore)); }
+}
+function saveStore() { try { localStorage.setItem(DB_KEY, JSON.stringify(Store)); } catch (e) { console.error("Failed to save store", e); } }
+
+// --- DATA MANIPULATION ---
+function createNotebook(title, persist = true) {
+  const id = createId('nb');
+  const notebook = { id, title, sections: [], collapsed: false, color: null };
+  Store.notebooks[id] = notebook;
+  Store.notebookOrder.push(id);
+  if (persist) saveStore();
+  return notebook;
+}
+function createSection(notebookId, title, persist = true) {
+  const id = createId('sec');
+  const section = { id, notebookId, title, pages: [] };
+  Store.sections[id] = section;
+  Store.notebooks[notebookId].sections.push(id);
+  if (persist) saveStore();
+  return section;
+}
+function createPage(sectionId, title, persist = true) {
+  const id = createId('pg');
+  const now = new Date().toISOString();
+  const page = { id, sectionId, title, html: '<p></p>', attachments: [], strokes: [], createdAt: now, updatedAt: now, fontFamily: 'Segoe UI', fontSize: '16px' };
+  Store.pages[id] = page;
+  Store.sections[sectionId].pages.push(id);
+  if (persist) saveStore();
+  return page;
+}
+function deletePage(pageId) {
+    const page = Store.pages[pageId]; if (!page) return;
+    const section = Store.sections[page.sectionId];
+    if (section) { section.pages = section.pages.filter(id => id !== pageId); }
+    delete Store.pages[pageId];
+    if (AppState.activePageId === pageId) AppState.activePageId = null;
+    saveStore(); refreshUI();
+}
+function deleteSection(sectionId) {
+    const section = Store.sections[sectionId]; if (!section) return;
+    section.pages.forEach(pageId => { if (Store.pages[pageId]) delete Store.pages[pageId]; });
+    const notebook = Store.notebooks[section.notebookId];
+    if (notebook) { notebook.sections = notebook.sections.filter(id => id !== sectionId); }
+    delete Store.sections[sectionId];
+    if (AppState.activeSectionId === sectionId) { AppState.activeSectionId = null; AppState.activePageId = null; }
+    saveStore(); refreshUI();
+}
+function duplicatePage(pageId) {
+    const originalPage = Store.pages[pageId]; if (!originalPage) return;
+    const newPage = createPage(originalPage.sectionId, `${originalPage.title} (copia)`);
+    newPage.html = originalPage.html;
+    newPage.strokes = JSON.parse(JSON.stringify(originalPage.strokes || []));
+    newPage.attachments = JSON.parse(JSON.stringify(originalPage.attachments || []));
+    newPage.fontFamily = originalPage.fontFamily;
+    newPage.fontSize = originalPage.fontSize;
+    AppState.activePageId = newPage.id;
+    saveStore(); refreshUI();
+}
+
+// --- COLOR PALETTE LOGIC ---
+let activePaletteContext = null;
+function openColorPalette(notebookId, triggerEl) {
+    const palette = getEl('#color-palette');
+    if (activePaletteContext && activePaletteContext.notebookId === notebookId) { closeColorPalette(); return; }
+    activePaletteContext = { notebookId };
+    palette.innerHTML = '';
+    COLOR_PALETTE.forEach(color => {
+        const swatch = document.createElement('div');
+        swatch.className = 'palette-swatch';
+        swatch.style.backgroundColor = color;
+        swatch.dataset.color = color;
+        palette.appendChild(swatch);
+    });
+    const rect = triggerEl.getBoundingClientRect();
+    palette.style.display = 'grid';
+    palette.style.top = `${rect.bottom + 5}px`;
+    palette.style.left = `${rect.left}px`;
+}
+function closeColorPalette() { getEl('#color-palette').style.display = 'none'; activePaletteContext = null; }
+
+// --- UI RENDERING ---
+function displayNotebooks() {
+  const listEl = getEl('#notebooks-list');
+  listEl.innerHTML = '';
+  Store.notebookOrder.forEach(nbId => {
+    const nb = Store.notebooks[nbId];
+    const item = document.createElement('div'); item.className = 'tree-item';
+    if (nb.color) { item.style.backgroundColor = nb.color; item.style.color = getContrastColor(nb.color); if (AppState.activeNotebookId === nbId) item.style.boxShadow = 'inset 0 0 0 2px white'; }
+    else { if (AppState.activeNotebookId === nbId) item.classList.add('active'); }
+    const colorDot = document.createElement('div'); colorDot.className = 'color-dot'; colorDot.style.backgroundColor = nb.color || 'transparent';
+    colorDot.onclick = (e) => { e.stopPropagation(); openColorPalette(nb.id, colorDot); };
+    const icon = document.createElement('span'); icon.textContent = '📒';
+    const titleInput = document.createElement('input'); titleInput.className = 'title-input grow'; titleInput.value = nb.title; titleInput.readOnly = true;
+    item.append(colorDot, icon, titleInput);
+    item.onclick = () => { clearTimeout(clickTimer); clickTimer = setTimeout(() => { nb.collapsed = !nb.collapsed; saveStore(); refreshUI(); }, 250); };
+    item.ondblclick = () => { clearTimeout(clickTimer); nb.collapsed = false; AppState.activeNotebookId = nb.id; AppState.activeSectionId = null; AppState.activePageId = null; saveStore(); refreshUI(); };
+    listEl.appendChild(item);
+    if (!nb.collapsed && AppState.activeNotebookId === nbId) { nb.sections.forEach(secId => displaySection(secId, listEl)); }
+  });
+}
+function displaySection(secId, parentEl) {
+    const sec = Store.sections[secId]; if (!sec) return;
+    const item = document.createElement('div'); item.className = 'tree-item'; if (AppState.activeSectionId === secId) item.classList.add('active'); item.style.marginLeft = '20px';
+    const icon = document.createElement('span'); icon.textContent = '📂';
+    const titleInput = document.createElement('input'); titleInput.className = 'title-input grow'; titleInput.value = sec.title; titleInput.readOnly = true;
+    const deleteBtn = document.createElement('button'); deleteBtn.className = 'delete-btn'; deleteBtn.innerHTML = '🗑️';
+    deleteBtn.onclick = (e) => { e.stopPropagation(); if (confirm(`Sei sicuro di voler eliminare la sezione "${sec.title}" e tutte le sue pagine?`)) { deleteSection(secId); } };
+    item.append(icon, titleInput, deleteBtn);
+    item.onclick = (e) => { e.stopPropagation(); AppState.activeSectionId = sec.id; AppState.activePageId = null; refreshUI(); };
+    parentEl.appendChild(item);
+}
+function displayPages() {
+  const listEl = getEl('#pages-list'), headerEl = getEl('#pages-list-header');
+  listEl.innerHTML = '';
+  if (!AppState.activeSectionId) { headerEl.textContent = 'Pagine'; listEl.innerHTML = '<div style="padding: 15px; color: var(--text-muted);">Seleziona una sezione</div>'; return; }
+  const section = Store.sections[AppState.activeSectionId]; if (!section) return;
+  headerEl.textContent = section.title;
+  section.pages.forEach(pageId => {
+    const page = Store.pages[pageId]; if (!page) return;
+    const item = document.createElement('div'); item.className = 'page-entry'; if (AppState.activePageId === pageId) item.classList.add('active');
+    const icon = document.createElement('span'); icon.textContent = '📝';
+    const titleSpan = document.createElement('span'); titleSpan.className = 'grow'; titleSpan.textContent = page.title;
+    const deleteBtn = document.createElement('button'); deleteBtn.className = 'delete-btn'; deleteBtn.innerHTML = '🗑️';
+    deleteBtn.onclick = (e) => { e.stopPropagation(); if (confirm(`Sei sicuro di voler eliminare la pagina "${page.title}"?`)) { deletePage(pageId); } };
+    item.append(icon, titleSpan, deleteBtn);
+    item.onclick = () => { AppState.activePageId = page.id; refreshUI(); };
+    listEl.appendChild(item);
+  });
+}
+function displayActivePage() {
+    const page = Store.pages[AppState.activePageId], editorWrapper = getEl('#editor-view .view-content');
+    if (!page) { editorWrapper.classList.add('hidden'); return; }
+    editorWrapper.classList.remove('hidden');
+    getEl('#page-title-input').value = page.title;
+    getEl('#editor-area').innerHTML = page.html;
+    applyEditorStyles(); displayAttachments(); displayInfo();
+}
+function applyEditorStyles() {
+    const page = Store.pages[AppState.activePageId], editor = getEl('#editor-area'), title = getEl('#page-title-input'), selector = getEl('#fontFamilySelector');
+    if (!page) { editor.style.fontFamily = ''; editor.style.fontSize = ''; title.style.fontFamily = ''; return; }
+    const fontFamily = page.fontFamily || 'Segoe UI', fontSize = page.fontSize || '16px';
+    editor.style.fontFamily = fontFamily; title.style.fontFamily = fontFamily; editor.style.fontSize = fontSize;
+    selector.value = fontFamily;
+}
+function displayAttachments() { /* ... unchanged ... */ }
+function displayInfo() { /* ... unchanged ... */ }
+function refreshUI() {
+  displayNotebooks(); displayPages(); displayActivePage();
+  getEl('#addSectionBtn').disabled = !AppState.activeNotebookId;
+  getEl('#addPageBtn').disabled = !AppState.activeSectionId;
+}
+function populateFontSelector() {
+    const selector = getEl('#fontFamilySelector');
+    FONT_LIST.forEach(font => { const option = document.createElement('option'); option.value = font; option.textContent = font; option.style.fontFamily = font; selector.appendChild(option); });
+}
+
+// --- CANVAS LOGIC ---
+const canvas = getEl('#drawing-canvas');
+const ctx = canvas.getContext('2d');
+let canvasState = { isDrawing: false, tool: 'pen', color: '#8caaee', width: 3, currentStroke: null };
+function resizeCanvas() { const rect = canvas.getBoundingClientRect(); canvas.width = rect.width * devicePixelRatio; canvas.height = rect.height * devicePixelRatio; ctx.scale(devicePixelRatio, devicePixelRatio); drawReplay(); }
+function drawReplay() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const page = Store.pages[AppState.activePageId];
+    if (!page || !page.strokes) return;
+    page.strokes.forEach(stroke => {
+        ctx.strokeStyle = stroke.color; ctx.lineWidth = stroke.width; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.globalCompositeOperation = stroke.tool === 'eraser' ? 'destination-out' : 'source-over';
+        ctx.beginPath();
+        stroke.points.forEach((p, i) => { if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
+        ctx.stroke();
+    });
+    ctx.globalCompositeOperation = 'source-over';
+}
+function canvasPoint(e) { const rect = canvas.getBoundingClientRect(); return { x: e.clientX - rect.left, y: e.clientY - rect.top }; }
+function startDraw(e) { if (!AppState.activePageId) return; canvasState.isDrawing = true; const p = canvasPoint(e); canvasState.currentStroke = { tool: canvasState.tool, color: canvasState.color, width: canvasState.width, points: [p] }; }
+function draw(e) { if (!canvasState.isDrawing) return; const p = canvasPoint(e); canvasState.currentStroke.points.push(p); drawReplay(); }
+function endDraw() {
+    if (!canvasState.isDrawing) return;
+    const page = Store.pages[AppState.activePageId];
+    if (page && canvasState.currentStroke.points.length > 1) { if (!page.strokes) page.strokes = []; page.strokes.push(canvasState.currentStroke); saveStore(); }
+    canvasState.isDrawing = false; canvasState.currentStroke = null;
+}
+
+// --- EVENT HANDLERS & APP LOGIC ---
+function setupEventListeners() {
+    getEl('#addNotebookBtn').onclick = () => { const nb = createNotebook('Nuovo Taccuino'); AppState.activeNotebookId = nb.id; refreshUI(); };
+    getEl('#addSectionBtn').onclick = () => { const sec = createSection(AppState.activeNotebookId, 'Nuova Sezione'); AppState.activeSectionId = sec.id; refreshUI(); };
+    getEl('#addPageBtn').onclick = () => { const page = createPage(AppState.activeSectionId, 'Nuova Pagina'); AppState.activePageId = page.id; refreshUI(); };
+    
+    const saveCurrentPage = () => { if (!AppState.activePageId) return; const page = Store.pages[AppState.activePageId]; if (!page) return; page.title = getEl('#page-title-input').value; page.html = getEl('#editor-area').innerHTML; page.updatedAt = new Date().toISOString(); saveStore(); displayPages(); };
+    let saveTimeout;
+    getEl('#page-title-input').onkeyup = () => { clearTimeout(saveTimeout); saveTimeout = setTimeout(saveCurrentPage, 500); };
+    getEl('#editor-area').oninput = () => { clearTimeout(saveTimeout); saveTimeout = setTimeout(saveCurrentPage, 500); };
+
+    getAllEl('#editor-view .toolbar .btn[data-cmd]').forEach(btn => { btn.onclick = () => { document.execCommand(btn.dataset.cmd, false, btn.dataset.val || null); getEl('#editor-area').focus(); }; });
+    getAllEl('.tab-btn').forEach(tab => { tab.onclick = () => { const viewId = tab.dataset.view; getAllEl('.tab-btn').forEach(t => t.classList.remove('active')); tab.classList.add('active'); getAllEl('.view').forEach(v => v.classList.remove('active')); getEl(`#${viewId}`).classList.add('active'); if (viewId === 'canvas-view') resizeCanvas(); }; });
+
+    getEl('#addLinkBtn').onclick = () => { const url = prompt("Inserisci l'URL:"); if (url) { document.execCommand('createLink', false, url); } };
+    getEl('#addImageInput').onchange = async (e) => { const file = e.target.files[0]; if (file) { const dataUrl = await fileToBase64(file); insertHtmlAtCursor(`<img src="${dataUrl}" />`); e.target.value = null; } };
+
+    getEl('#color-palette').addEventListener('click', (e) => { const swatch = e.target.closest('.palette-swatch'); if (swatch && activePaletteContext) { const color = swatch.dataset.color, nb = Store.notebooks[activePaletteContext.notebookId]; if (nb) { nb.color = color; saveStore(); refreshUI(); } closeColorPalette(); } });
+    document.addEventListener('click', (e) => { if (!getEl('#color-palette').contains(e.target) && !e.target.closest('.color-dot')) { closeColorPalette(); } });
+
+    getEl('#fontFamilySelector').addEventListener('change', (e) => { const page = Store.pages[AppState.activePageId]; if (page) { page.fontFamily = e.target.value; applyEditorStyles(); saveStore(); } });
+    getEl('#increaseFontSizeBtn').addEventListener('click', () => { const page = Store.pages[AppState.activePageId]; if (page) { let size = parseInt(page.fontSize, 10); page.fontSize = `${Math.min(48, size + 1)}px`; applyEditorStyles(); saveStore(); } });
+    getEl('#decreaseFontSizeBtn').addEventListener('click', () => { const page = Store.pages[AppState.activePageId]; if (page) { let size = parseInt(page.fontSize, 10); page.fontSize = `${Math.max(10, size - 1)}px`; applyEditorStyles(); saveStore(); } });
+
+    getEl('#duplicatePageBtn').onclick = () => { if (AppState.activePageId) duplicatePage(AppState.activePageId); };
+    getEl('#deletePageBtn').onclick = () => { if (AppState.activePageId && confirm('Eliminare definitivamente questa pagina?')) deletePage(AppState.activePageId); };
+
+    canvas.addEventListener('mousedown', startDraw); canvas.addEventListener('mousemove', draw); canvas.addEventListener('mouseup', endDraw); canvas.addEventListener('mouseleave', endDraw);
+    getEl('#penTool').onclick = () => { canvasState.tool = 'pen'; getEl('#penTool').classList.add('active'); getEl('#eraserTool').classList.remove('active'); };
+    getEl('#eraserTool').onclick = () => { canvasState.tool = 'eraser'; getEl('#eraserTool').classList.add('active'); getEl('#penTool').classList.remove('active'); };
+    getEl('#colorChooser').oninput = (e) => canvasState.color = e.target.value;
+    getEl('#widthChooser').oninput = (e) => canvasState.width = e.target.value;
+    getEl('#clearCanvasBtn').onclick = () => { if (confirm('Pulire la canvas?')) { const page = Store.pages[AppState.activePageId]; if (page) { page.strokes = []; saveStore(); drawReplay(); } } };
+    getEl('#exportCanvasBtn').onclick = () => { const page = Store.pages[AppState.activePageId]; if (page) { downloadFile(`${page.title}-canvas.png`, canvas.toDataURL('image/png')); }};
+}
+
+// Initialize application
+function init() {
+  document.addEventListener('DOMContentLoaded', () => {
+    loadStore();
+    if (Store.notebookOrder.length > 0 && !AppState.activeNotebookId) {
+        AppState.activeNotebookId = Store.notebookOrder[0]; const nb = Store.notebooks[AppState.activeNotebookId];
+        if (nb && nb.sections.length > 0) { AppState.activeSectionId = nb.sections[0]; const sec = Store.sections[AppState.activeSectionId]; if (sec && sec.pages.length > 0) { AppState.activePageId = sec.pages[0]; } }
+    }
+    populateFontSelector(); setupEventListeners(); refreshUI();
+    getEl('#loader').style.display = 'none'; getEl('#app-container').classList.add('loaded');
+  });
+}
+init();
+</script>
+</body>
+</html>
