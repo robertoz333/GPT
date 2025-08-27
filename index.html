@@ -370,7 +370,7 @@
       </div>
 
       <div id="canvas-view" class="view">
-        <p>Canvas e altre viste sono state omesse per brevità, ma il loro HTML è qui.</p>
+        <p>Il contenuto delle viste Canvas, Allegati, ecc. è omesso per brevità.</p>
       </div>
       <div id="attachments-view" class="view"></div>
       <div id="info-view" class="view">
@@ -405,6 +405,21 @@ document.addEventListener('DOMContentLoaded', () => {
 /* -------------------- UTILITIES -------------------- */
 const getEl = sel => document.querySelector(sel);
 const createId = (prefix = 'id') => `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+// --- FUNZIONE ESPORTA CORRETTA ---
+const downloadFile = (name, content, type = 'application/json') => {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.style.display = 'none';
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
+  a.remove();
+};
+
 function getContrastColor(hex) {
   if (!hex) return 'var(--text-primary)';
   const r = parseInt(hex.substr(1, 2), 16), g = parseInt(hex.substr(3, 2), 16), b = parseInt(hex.substr(5, 2), 16);
@@ -437,7 +452,6 @@ let Store = {};
 let AppState = { activeNotebookId: null, activeSectionId: null, activePageId: null };
 
 const COLOR_PALETTE = ['#e78284','#ea999c','#e5c890','#f0daab','#a6d189','#bde0a8','#8caaee','#a3b8ef','#babbf1','#c8c9f4'];
-const FONT_LIST = ['Segoe UI', 'Arial', 'Verdana', 'Georgia', 'Times New Roman', 'Courier New'];
 const defaultStore = { notebooks: {}, sections: {}, pages: {}, notebookOrder: []};
 
 function loadStore() {
@@ -515,7 +529,7 @@ function deleteNotebook(notebookId) {
     saveStore(); refreshUI();
 }
 
-/* -------------------- COLOR LOGIC (WITH INHERITANCE) -------------------- */
+/* -------------------- COLOR LOGIC -------------------- */
 function getEffectiveColor(type, id) {
     if (type === 'page') {
         const page = Store.pages[id]; if (!page) return null;
@@ -579,7 +593,8 @@ function displayNotebooks() {
         AppState.activeNotebookId = nb.id;
         nb.collapsed = !nb.collapsed;
         AppState.activeSectionId = null; AppState.activePageId = null;
-        saveStore(); refreshUI();
+        saveStore();
+        refreshUI();
     };
     listEl.appendChild(item);
     if (!nb.collapsed && AppState.activeNotebookId === nbId) { nb.sections.forEach(secId => displaySection(secId, listEl)); }
@@ -652,21 +667,15 @@ function displayActivePage() {
     const editorWrapper = getEl('#editor-view .view-content');
     const pageTitleContainer = getEl('#page-title-container');
     const pageTitleInput = getEl('#page-title-input');
-
-    // Pulisci i vecchi listener per evitare duplicati
     const oldEditBtn = pageTitleContainer.querySelector('.action-btn');
     if(oldEditBtn) oldEditBtn.remove();
-
     if (!page) { 
         editorWrapper.classList.add('hidden');
         return; 
     }
-    
     editorWrapper.classList.remove('hidden');
     pageTitleInput.value = page.title;
     getEl('#editor-area').innerHTML = page.html || '<p></p>';
-
-    // Aggiungi il pulsante di modifica per il titolo principale
     const editBtn = document.createElement('button');
     editBtn.className = 'action-btn';
     editBtn.innerHTML = '✏️';
@@ -729,7 +738,7 @@ function setupEventListeners() {
     if (!getEl('#color-palette').contains(e.target) && !e.target.closest('.color-dot')) { closeColorPalette(); }
   });
   getEl('#deletePageBtn').onclick = () => { if (AppState.activePageId) deletePage(AppState.activePageId); };
-  getEl('#exportDataBtn').onclick = () => { downloadFile(`gpt-notes-data.json`, JSON.stringify(Store, null, 2), 'application/json'); };
+  getEl('#exportDataBtn').onclick = () => { downloadFile(`gpt-notes-data.json`, JSON.stringify(Store, null, 2)); };
   getEl('#importDataInput').onchange = (e) => {
     const file = e.target.files[0]; if (!file) return;
     const reader = new FileReader();
