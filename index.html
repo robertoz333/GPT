@@ -315,6 +315,7 @@
       border: 1px solid var(--border-color);
       cursor: pointer;
       transition: transform 0.2s ease;
+      flex-shrink: 0;
     }
     .color-dot:hover { transform: scale(1.2); }
     
@@ -453,7 +454,7 @@
         <div class="view-content">
           <h3>Informazioni Pagina</h3><div id="page-metadata" class="card"></div>
            <h3 style="margin-top: 30px;">Azioni</h3>
-           <div style="display: flex; gap: 10px;"><button id="duplicatePageBtn" class="btn">Duplica</button><button id="deletePageBtn" class="btn danger">Elimina</button></div>
+           <div style="display: flex; gap: 10px;"><button id="duplicatePageBtn" class="btn">Duplica</button><button id="deletePageBtn" class="btn danger">Elimina Pagina</button></div>
         </div>
       </div>
     </main>
@@ -464,11 +465,9 @@
 
 <script>
 /* -------------------- REPO-AWARE BASE PATH -------------------- */
-// Determina il segmento repo da /RepoName/... in GitHub Pages utente
 const REPO_SEGMENT = (location.pathname.split('/').filter(Boolean)[0] || '');
 const BASE_PATH = REPO_SEGMENT ? `/${REPO_SEGMENT}/` : '/';
 
-// Inserisce dinamicamente <base href="..."> per rendere corretti i link relativi
 (function ensureBaseTag() {
   const existing = document.querySelector('head base');
   if (existing) {
@@ -480,7 +479,6 @@ const BASE_PATH = REPO_SEGMENT ? `/${REPO_SEGMENT}/` : '/';
   }
 })();
 
-// Link del brand alla home del repo corrente
 document.addEventListener('DOMContentLoaded', () => {
   const brand = document.getElementById('brandLink');
   if (brand) brand.setAttribute('href', BASE_PATH);
@@ -519,21 +517,14 @@ function insertHtmlAtCursor(html) {
   document.execCommand('insertHTML', false, html);
 }
 
-// Normalizza href che iniziano con "/" verso la root del repo corrente
 function normalizeHref(href) {
   if (!href) return href;
-  // Se è protocol-relative o assoluto, lascia stare
   if (/^(https?:)?\/\//i.test(href)) return href;
-
-  // Se è solo "/" o inizia con "/qualcosa", forzalo sotto BASE_PATH
   if (href === '/' || href.startsWith('/')) {
     return BASE_PATH + href.replace(/^\/+/, '');
   }
-  // Link relativo: lasciamo così, grazie a <base href=...> punterà al repo
   return href;
 }
-
-// Applica normalizzazione a tutti gli <a> nell'editor
 function normalizeEditorAnchors() {
   getAllEl('#editor-area a[href]').forEach(a => {
     const newHref = normalizeHref(a.getAttribute('href'));
@@ -542,12 +533,16 @@ function normalizeEditorAnchors() {
 }
 
 /* -------------------- CORE STATE & DB -------------------- */
-// Isola lo storage per repo diversi
-const DB_KEY = `gpt_notes_v2_${REPO_SEGMENT || 'root'}`;
+const DB_KEY = `gpt_notes_v4_${REPO_SEGMENT || 'root'}`;
 let Store = {};
 let AppState = { activeNotebookId: null, activeSectionId: null, activePageId: null };
 let clickTimer = null;
-const COLOR_PALETTE = ['#e78284','#ea999c','#e5c890','#f0daab','#a6d189','#bde0a8','#8caaee','#a3b8ef','#babbf1','#c8c9f4'];
+
+const COLOR_PALETTE = [
+  '#e78284','#ea999c','#e5c890','#f0daab',
+  '#a6d189','#bde0a8','#8caaee','#a3b8ef',
+  '#babbf1','#c8c9f4'
+];
 const FONT_LIST = ['Segoe UI', 'Arial', 'Verdana', 'Georgia', 'Times New Roman', 'Courier New'];
 const defaultStore = { notebooks: {}, sections: {}, pages: {}, notebookOrder: [], settings: { theme: 'neptune' } };
 
@@ -560,14 +555,14 @@ function loadStore() {
       const notebook = createNotebook('Il mio primo Taccuino', false);
       const section = createSection(notebook.id, 'Appunti veloci', false);
       const page = createPage(section.id, 'Benvenuto!', false);
-      page.html = `<h1>Ciao e benvenuto in GPT!</h1><p>Questa è la tua prima nota. Clicca sul pallino colorato accanto al nome del taccuino per cambiargli colore.</p><p><a href="/">Torna alla home del repo</a></p>`;
+      page.html = `<h1>Ciao e benvenuto!</h1><p>Imposta un colore per questo taccuino e vedrai che verrà applicato anche a questa sezione e a questa pagina!</p><p>Puoi comunque dare un colore diverso a ogni singolo elemento cliccando sul suo pallino colorato.</p><p>Usa il cestino 🗑️ che appare al passaggio del mouse per eliminare ciò che non ti serve.</p>`;
       saveStore();
     }
   } catch (e) { console.error("Failed to load store", e); Store = JSON.parse(JSON.stringify(defaultStore)); }
 }
 function saveStore() { try { localStorage.setItem(DB_KEY, JSON.stringify(Store)); } catch (e) { console.error("Failed to save store", e); } }
 
-/* -------------------- DATA MANIPULATION -------------------- */
+/* -------------------- DATA MANIPULATION & DELETION -------------------- */
 function createNotebook(title, persist = true) {
   const id = createId('nb');
   const notebook = { id, title, sections: [], collapsed: false, color: null };
@@ -578,7 +573,7 @@ function createNotebook(title, persist = true) {
 }
 function createSection(notebookId, title, persist = true) {
   const id = createId('sec');
-  const section = { id, notebookId, title, pages: [] };
+  const section = { id, notebookId, title, pages: [], color: null };
   Store.sections[id] = section;
   Store.notebooks[notebookId].sections.push(id);
   if (persist) saveStore();
@@ -587,29 +582,56 @@ function createSection(notebookId, title, persist = true) {
 function createPage(sectionId, title, persist = true) {
   const id = createId('pg');
   const now = new Date().toISOString();
-  const page = { id, sectionId, title, html: '<p></p>', attachments: [], strokes: [], createdAt: now, updatedAt: now, fontFamily: 'Segoe UI', fontSize: '16px' };
+  const page = { id, sectionId, title, html: '<p></p>', attachments: [], strokes: [], createdAt: now, updatedAt: now, fontFamily: 'Segoe UI', fontSize: '16px', color: null };
   Store.pages[id] = page;
   Store.sections[sectionId].pages.push(id);
   if (persist) saveStore();
   return page;
 }
+
 function deletePage(pageId) {
-  const page = Store.pages[pageId]; if (!page) return;
-  const section = Store.sections[page.sectionId];
-  if (section) { section.pages = section.pages.filter(id => id !== pageId); }
-  delete Store.pages[pageId];
-  if (AppState.activePageId === pageId) AppState.activePageId = null;
-  saveStore(); refreshUI();
+    if (!confirm(`Sei sicuro di voler eliminare la pagina "${Store.pages[pageId]?.title || ''}"?`)) return;
+    const page = Store.pages[pageId];
+    if (!page) return;
+    const section = Store.sections[page.sectionId];
+    if (section) { section.pages = section.pages.filter(id => id !== pageId); }
+    delete Store.pages[pageId];
+    if (AppState.activePageId === pageId) { AppState.activePageId = null; }
+    saveStore();
+    refreshUI();
 }
-function deleteSection(sectionId) {
-  const section = Store.sections[sectionId]; if (!section) return;
-  section.pages.forEach(pageId => { if (Store.pages[pageId]) delete Store.pages[pageId]; });
-  const notebook = Store.notebooks[section.notebookId];
-  if (notebook) { notebook.sections = notebook.sections.filter(id => id !== sectionId); }
-  delete Store.sections[sectionId];
-  if (AppState.activeSectionId === sectionId) { AppState.activeSectionId = null; AppState.activePageId = null; }
-  saveStore(); refreshUI();
+
+function deleteSection(sectionId, cascade = false) {
+    if (!cascade && !confirm(`Sei sicuro di voler eliminare la sezione "${Store.sections[sectionId]?.title || ''}" e TUTTE le sue pagine?`)) return;
+    const section = Store.sections[sectionId];
+    if (!section) return;
+    section.pages.forEach(pageId => delete Store.pages[pageId]);
+    const notebook = Store.notebooks[section.notebookId];
+    if (notebook) { notebook.sections = notebook.sections.filter(id => id !== sectionId); }
+    delete Store.sections[sectionId];
+    if (AppState.activeSectionId === sectionId) {
+        AppState.activeSectionId = null;
+        AppState.activePageId = null;
+    }
+    if (!cascade) { saveStore(); refreshUI(); }
 }
+
+function deleteNotebook(notebookId) {
+    if (!confirm(`Sei sicuro di voler eliminare il taccuino "${Store.notebooks[notebookId]?.title || ''}" e TUTTO il suo contenuto? L'azione è irreversibile.`)) return;
+    const notebook = Store.notebooks[notebookId];
+    if (!notebook) return;
+    notebook.sections.forEach(sectionId => deleteSection(sectionId, true)); // True per non chiedere conferma per ogni sezione
+    delete Store.notebooks[notebookId];
+    Store.notebookOrder = Store.notebookOrder.filter(id => id !== notebookId);
+    if (AppState.activeNotebookId === notebookId) {
+        AppState.activeNotebookId = null;
+        AppState.activeSectionId = null;
+        AppState.activePageId = null;
+    }
+    saveStore();
+    refreshUI();
+}
+
 function duplicatePage(pageId) {
   const originalPage = Store.pages[pageId]; if (!originalPage) return;
   const newPage = createPage(originalPage.sectionId, `${originalPage.title} (copia)`);
@@ -618,16 +640,36 @@ function duplicatePage(pageId) {
   newPage.attachments = JSON.parse(JSON.stringify(originalPage.attachments || []));
   newPage.fontFamily = originalPage.fontFamily;
   newPage.fontSize = originalPage.fontSize;
+  newPage.color = originalPage.color || null;
   AppState.activePageId = newPage.id;
   saveStore(); refreshUI();
 }
 
-/* -------------------- COLOR PALETTE LOGIC -------------------- */
+/* -------------------- COLOR LOGIC (WITH INHERITANCE) -------------------- */
+function getEffectiveColor(type, id) {
+    if (type === 'page') {
+        const page = Store.pages[id];
+        if (!page) return null;
+        if (page.color) return page.color;
+        return getEffectiveColor('section', page.sectionId);
+    }
+    if (type === 'section') {
+        const section = Store.sections[id];
+        if (!section) return null;
+        if (section.color) return section.color;
+        const notebook = Store.notebooks[section.notebookId];
+        return notebook ? notebook.color : null;
+    }
+    return null; // Aggiunto per coerenza
+}
+
 let activePaletteContext = null;
-function openColorPalette(notebookId, triggerEl) {
+function openColorPalette(context, triggerEl) {
   const palette = getEl('#color-palette');
-  if (activePaletteContext && activePaletteContext.notebookId === notebookId) { closeColorPalette(); return; }
-  activePaletteContext = { notebookId };
+  if (activePaletteContext && activePaletteContext.id === context.id) {
+    closeColorPalette(); return;
+  }
+  activePaletteContext = context;
   palette.innerHTML = '';
   COLOR_PALETTE.forEach(color => {
     const swatch = document.createElement('div');
@@ -649,14 +691,24 @@ function displayNotebooks() {
   listEl.innerHTML = '';
   Store.notebookOrder.forEach(nbId => {
     const nb = Store.notebooks[nbId];
+    if (!nb) return;
     const item = document.createElement('div'); item.className = 'tree-item';
-    if (nb.color) { item.style.backgroundColor = nb.color; item.style.color = getContrastColor(nb.color); if (AppState.activeNotebookId === nbId) item.style.boxShadow = 'inset 0 0 0 2px white'; }
-    else { if (AppState.activeNotebookId === nbId) item.classList.add('active'); }
+    if (nb.color) {
+      item.style.backgroundColor = nb.color;
+      item.style.color = getContrastColor(nb.color);
+      if (AppState.activeNotebookId === nbId) item.style.boxShadow = 'inset 0 0 0 2px white';
+    } else {
+      if (AppState.activeNotebookId === nbId) item.classList.add('active');
+    }
     const colorDot = document.createElement('div'); colorDot.className = 'color-dot'; colorDot.style.backgroundColor = nb.color || 'transparent';
-    colorDot.onclick = (e) => { e.stopPropagation(); openColorPalette(nb.id, colorDot); };
+    colorDot.title = 'Colore taccuino';
+    colorDot.onclick = (e) => { e.stopPropagation(); openColorPalette({ type: 'notebook', id: nb.id }, colorDot); };
     const icon = document.createElement('span'); icon.textContent = '📒';
     const titleInput = document.createElement('input'); titleInput.className = 'title-input grow'; titleInput.value = nb.title; titleInput.readOnly = true;
-    item.append(colorDot, icon, titleInput);
+    const deleteBtn = document.createElement('button'); deleteBtn.className = 'delete-btn'; deleteBtn.innerHTML = '🗑️';
+    deleteBtn.title = `Elimina il taccuino "${nb.title}"`;
+    deleteBtn.onclick = (e) => { e.stopPropagation(); deleteNotebook(nb.id); };
+    item.append(colorDot, icon, titleInput, deleteBtn);
     item.onclick = () => { clearTimeout(clickTimer); clickTimer = setTimeout(() => { nb.collapsed = !nb.collapsed; saveStore(); refreshUI(); }, 250); };
     item.ondblclick = () => { clearTimeout(clickTimer); nb.collapsed = false; AppState.activeNotebookId = nb.id; AppState.activeSectionId = null; AppState.activePageId = null; saveStore(); refreshUI(); };
     listEl.appendChild(item);
@@ -665,12 +717,24 @@ function displayNotebooks() {
 }
 function displaySection(secId, parentEl) {
   const sec = Store.sections[secId]; if (!sec) return;
-  const item = document.createElement('div'); item.className = 'tree-item'; if (AppState.activeSectionId === secId) item.classList.add('active'); item.style.marginLeft = '20px';
+  const item = document.createElement('div'); item.className = 'tree-item'; item.style.marginLeft = '20px';
+  const effectiveColor = getEffectiveColor('section', secId);
+  if (effectiveColor) {
+    item.style.backgroundColor = effectiveColor;
+    item.style.color = getContrastColor(effectiveColor);
+    if (AppState.activeSectionId === secId) item.style.boxShadow = 'inset 0 0 0 2px white';
+  } else {
+    if (AppState.activeSectionId === secId) item.classList.add('active');
+  }
+  const colorDot = document.createElement('div'); colorDot.className = 'color-dot'; colorDot.style.backgroundColor = sec.color || 'transparent';
+  colorDot.title = 'Colore sezione (sovrascrive taccuino)';
+  colorDot.onclick = (e) => { e.stopPropagation(); openColorPalette({ type: 'section', id: sec.id }, colorDot); };
   const icon = document.createElement('span'); icon.textContent = '📂';
   const titleInput = document.createElement('input'); titleInput.className = 'title-input grow'; titleInput.value = sec.title; titleInput.readOnly = true;
   const deleteBtn = document.createElement('button'); deleteBtn.className = 'delete-btn'; deleteBtn.innerHTML = '🗑️';
-  deleteBtn.onclick = (e) => { e.stopPropagation(); if (confirm(`Sei sicuro di voler eliminare la sezione "${sec.title}" e tutte le sue pagine?`)) { deleteSection(secId); } };
-  item.append(icon, titleInput, deleteBtn);
+  deleteBtn.title = `Elimina la sezione "${sec.title}"`;
+  deleteBtn.onclick = (e) => { e.stopPropagation(); deleteSection(sec.id); };
+  item.append(colorDot, icon, titleInput, deleteBtn);
   item.onclick = (e) => { e.stopPropagation(); AppState.activeSectionId = sec.id; AppState.activePageId = null; refreshUI(); };
   parentEl.appendChild(item);
 }
@@ -682,91 +746,94 @@ function displayPages() {
   headerEl.textContent = section.title;
   section.pages.forEach(pageId => {
     const page = Store.pages[pageId]; if (!page) return;
-    const item = document.createElement('div'); item.className = 'page-entry'; if (AppState.activePageId === pageId) item.classList.add('active');
+    const item = document.createElement('div'); item.className = 'page-entry';
+    const effectiveColor = getEffectiveColor('page', pageId);
+    if (effectiveColor) {
+      item.style.backgroundColor = effectiveColor;
+      item.style.color = getContrastColor(effectiveColor);
+      if (AppState.activePageId === pageId) item.style.boxShadow = 'inset 0 0 0 2px rgba(255,255,255,.75)';
+    } else {
+      if (AppState.activePageId === pageId) item.classList.add('active');
+    }
+    const colorDot = document.createElement('div'); colorDot.className = 'color-dot'; colorDot.style.backgroundColor = page.color || 'transparent';
+    colorDot.title = 'Colore pagina (sovrascrive tutto)';
+    colorDot.onclick = (e) => { e.stopPropagation(); openColorPalette({ type: 'page', id: page.id }, colorDot); };
     const icon = document.createElement('span'); icon.textContent = '📝';
     const titleSpan = document.createElement('span'); titleSpan.className = 'grow'; titleSpan.textContent = page.title;
     const deleteBtn = document.createElement('button'); deleteBtn.className = 'delete-btn'; deleteBtn.innerHTML = '🗑️';
-    deleteBtn.onclick = (e) => { e.stopPropagation(); if (confirm(`Sei sicuro di voler eliminare la pagina "${page.title}"?`)) { deletePage(pageId); } };
-    item.append(icon, titleSpan, deleteBtn);
+    deleteBtn.title = `Elimina la pagina "${page.title}"`;
+    deleteBtn.onclick = (e) => { e.stopPropagation(); deletePage(page.id); };
+    item.append(colorDot, icon, titleSpan, deleteBtn);
     item.onclick = () => { AppState.activePageId = page.id; refreshUI(); };
     listEl.appendChild(item);
   });
 }
 function displayActivePage() {
-  const page = Store.pages[AppState.activePageId], editorWrapper = getEl('#editor-view .view-content');
-  if (!page) { editorWrapper.classList.add('hidden'); return; }
+  const page = Store.pages[AppState.activePageId];
+  const editorWrapper = getEl('#editor-view .view-content');
+  const pageMetaContainer = getEl('#page-metadata');
+  if (!page) { 
+    editorWrapper.classList.add('hidden'); 
+    pageMetaContainer.innerHTML = '';
+    return; 
+  }
   editorWrapper.classList.remove('hidden');
   getEl('#page-title-input').value = page.title;
-  getEl('#editor-area').innerHTML = page.html;
+  getEl('#editor-area').innerHTML = page.html || '<p></p>';
   normalizeEditorAnchors();
-  applyEditorStyles(); displayAttachments(); displayInfo();
+  applyEditorStyles();
+  pageMetaContainer.innerHTML = `<div><strong>Creato:</strong> ${new Date(page.createdAt).toLocaleString()}</div><div><strong>Aggiornato:</strong> ${new Date(page.updatedAt).toLocaleString()}</div>`;
 }
 function applyEditorStyles() {
-  const page = Store.pages[AppState.activePageId], editor = getEl('#editor-area'), title = getEl('#page-title-input'), selector = getEl('#fontFamilySelector');
-  if (!page) { editor.style.fontFamily = ''; editor.style.fontSize = ''; title.style.fontFamily = ''; return; }
-  const fontFamily = page.fontFamily || 'Segoe UI', fontSize = page.fontSize || '16px';
-  editor.style.fontFamily = fontFamily; title.style.fontFamily = fontFamily; editor.style.fontSize = fontSize;
+  const page = Store.pages[AppState.activePageId];
+  if (!page) return;
+  const editor = getEl('#editor-area'), title = getEl('#page-title-input'), selector = getEl('#fontFamilySelector');
+  const fontFamily = page.fontFamily || 'Segoe UI';
+  const fontSize = page.fontSize || '16px';
+  editor.style.fontFamily = fontFamily; 
+  title.style.fontFamily = fontFamily; 
+  editor.style.fontSize = fontSize;
   selector.value = fontFamily;
 }
-function displayAttachments() { /* ... unchanged ... */ }
-function displayInfo() { /* ... unchanged ... */ }
 function refreshUI() {
-  displayNotebooks(); displayPages(); displayActivePage();
+  displayNotebooks(); 
+  displayPages(); 
+  displayActivePage();
   getEl('#addSectionBtn').disabled = !AppState.activeNotebookId;
   getEl('#addPageBtn').disabled = !AppState.activeSectionId;
 }
 function populateFontSelector() {
   const selector = getEl('#fontFamilySelector');
-  FONT_LIST.forEach(font => { const option = document.createElement('option'); option.value = font; option.textContent = font; option.style.fontFamily = font; selector.appendChild(option); });
-}
-
-/* -------------------- CANVAS LOGIC -------------------- */
-const canvas = getEl('#drawing-canvas');
-const ctx = canvas.getContext('2d');
-let canvasState = { isDrawing: false, tool: 'pen', color: '#8caaee', width: 3, currentStroke: null };
-function resizeCanvas() { const rect = canvas.getBoundingClientRect(); canvas.width = rect.width * devicePixelRatio; canvas.height = rect.height * devicePixelRatio; ctx.scale(devicePixelRatio, devicePixelRatio); drawReplay(); }
-function drawReplay() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const page = Store.pages[AppState.activePageId];
-  if (!page || !page.strokes) return;
-  page.strokes.forEach(stroke => {
-    ctx.strokeStyle = stroke.color; ctx.lineWidth = stroke.width; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    ctx.globalCompositeOperation = stroke.tool === 'eraser' ? 'destination-out' : 'source-over';
-    ctx.beginPath();
-    stroke.points.forEach((p, i) => { if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
-    ctx.stroke();
+  if(selector.options.length > 0) return;
+  FONT_LIST.forEach(font => { 
+    const option = document.createElement('option'); 
+    option.value = font; 
+    option.textContent = font; 
+    option.style.fontFamily = font; 
+    selector.appendChild(option); 
   });
-  ctx.globalCompositeOperation = 'source-over';
-}
-function canvasPoint(e) { const rect = canvas.getBoundingClientRect(); return { x: e.clientX - rect.left, y: e.clientY - rect.top }; }
-function startDraw(e) { if (!AppState.activePageId) return; canvasState.isDrawing = true; const p = canvasPoint(e); canvasState.currentStroke = { tool: canvasState.tool, color: canvasState.color, width: canvasState.width, points: [p] }; }
-function draw(e) { if (!canvasState.isDrawing) return; const p = canvasPoint(e); canvasState.currentStroke.points.push(p); drawReplay(); }
-function endDraw() {
-  if (!canvasState.isDrawing) return;
-  const page = Store.pages[AppState.activePageId];
-  if (page && canvasState.currentStroke.points.length > 1) { if (!page.strokes) page.strokes = []; page.strokes.push(canvasState.currentStroke); saveStore(); }
-  canvasState.isDrawing = false; canvasState.currentStroke = null;
 }
 
 /* -------------------- EVENT HANDLERS & APP LOGIC -------------------- */
 function setupEventListeners() {
   getEl('#addNotebookBtn').onclick = () => { const nb = createNotebook('Nuovo Taccuino'); AppState.activeNotebookId = nb.id; refreshUI(); };
-  getEl('#addSectionBtn').onclick = () => { const sec = createSection(AppState.activeNotebookId, 'Nuova Sezione'); AppState.activeSectionId = sec.id; refreshUI(); };
-  getEl('#addPageBtn').onclick = () => { const page = createPage(AppState.activeSectionId, 'Nuova Pagina'); AppState.activePageId = page.id; refreshUI(); };
+  getEl('#addSectionBtn').onclick = () => { if(!AppState.activeNotebookId) return; const sec = createSection(AppState.activeNotebookId, 'Nuova Sezione'); AppState.activeSectionId = sec.id; refreshUI(); };
+  getEl('#addPageBtn').onclick = () => { if(!AppState.activeSectionId) return; const page = createPage(AppState.activeSectionId, 'Nuova Pagina'); AppState.activePageId = page.id; refreshUI(); };
   
+  let saveTimeout;
   const saveCurrentPage = () => {
     if (!AppState.activePageId) return;
     const page = Store.pages[AppState.activePageId]; if (!page) return;
     page.title = getEl('#page-title-input').value;
     page.html = getEl('#editor-area').innerHTML;
     page.updatedAt = new Date().toISOString();
-    saveStore(); displayPages();
+    saveStore(); 
+    displayPages();
+    displayActivePage();
   };
-  let saveTimeout;
   getEl('#page-title-input').onkeyup = () => { clearTimeout(saveTimeout); saveTimeout = setTimeout(saveCurrentPage, 500); };
   getEl('#editor-area').oninput = () => { clearTimeout(saveTimeout); normalizeEditorAnchors(); saveTimeout = setTimeout(saveCurrentPage, 500); };
 
-  // Comandi editor
   getAllEl('#editor-view .toolbar .btn[data-cmd]').forEach(btn => {
     btn.onclick = () => { document.execCommand(btn.dataset.cmd, false, btn.dataset.val || null); getEl('#editor-area').focus(); };
   });
@@ -777,114 +844,77 @@ function setupEventListeners() {
       tab.classList.add('active');
       getAllEl('.view').forEach(v => v.classList.remove('active'));
       getEl(`#${viewId}`).classList.add('active');
-      if (viewId === 'canvas-view') resizeCanvas();
     };
   });
 
-  // Aggiungi link con normalizzazione base-path
   getEl('#addLinkBtn').onclick = () => {
     const url = prompt("Inserisci l'URL (puoi usare /percorso o http...):");
     if (!url) return;
-    let finalUrl = url.trim();
-
-    // Se è assoluto (http/https) o protocol-relative, lascialo com'è
-    if (/^(https?:)?\/\//i.test(finalUrl)) {
-      // ok
-    } else if (finalUrl === '/' || finalUrl.startsWith('/')) {
-      finalUrl = normalizeHref(finalUrl);
-    } else {
-      // relativo: grazie a <base> punterà già sotto il repo
-      // niente da fare
-    }
+    const finalUrl = normalizeHref(url.trim());
     document.execCommand('createLink', false, finalUrl);
-    // Normalizza a posteriori (nel caso il browser abbia riscritto)
     setTimeout(normalizeEditorAnchors, 0);
   };
-
   getEl('#addImageInput').onchange = async (e) => {
     const file = e.target.files[0];
     if (file) {
       const dataUrl = await fileToBase64(file);
-      insertHtmlAtCursor(`<img src="${dataUrl}" />`);
+      insertHtmlAtCursor(`<img src="${dataUrl}" alt="Immagine caricata" />`);
       e.target.value = null;
     }
   };
-
   getEl('#color-palette').addEventListener('click', (e) => {
     const swatch = e.target.closest('.palette-swatch');
     if (swatch && activePaletteContext) {
-      const color = swatch.dataset.color, nb = Store.notebooks[activePaletteContext.notebookId];
-      if (nb) { nb.color = color; saveStore(); refreshUI(); }
-      closeColorPalette();
+      const color = swatch.dataset.color;
+      let target;
+      if (activePaletteContext.type === 'notebook') target = Store.notebooks[activePaletteContext.id];
+      else if (activePaletteContext.type === 'section') target = Store.sections[activePaletteContext.id];
+      else if (activePaletteContext.type === 'page') target = Store.pages[activePaletteContext.id];
+      if (target) { target.color = (target.color === color) ? null : color; }
+      saveStore(); refreshUI(); closeColorPalette();
     }
   });
   document.addEventListener('click', (e) => {
     if (!getEl('#color-palette').contains(e.target) && !e.target.closest('.color-dot')) { closeColorPalette(); }
   });
-
-  getEl('#fontFamilySelector').addEventListener('change', (e) => {
+  getEl('#fontFamilySelector').onchange = (e) => {
     const page = Store.pages[AppState.activePageId];
     if (page) { page.fontFamily = e.target.value; applyEditorStyles(); saveStore(); }
-  });
-  getEl('#increaseFontSizeBtn').addEventListener('click', () => {
+  };
+  getEl('#increaseFontSizeBtn').onclick = () => {
     const page = Store.pages[AppState.activePageId];
-    if (page) { let size = parseInt(page.fontSize, 10); page.fontSize = `${Math.min(48, size + 1)}px`; applyEditorStyles(); saveStore(); }
-  });
-  getEl('#decreaseFontSizeBtn').addEventListener('click', () => {
+    if (page) { let size = parseInt(page.fontSize || '16', 10); page.fontSize = `${Math.min(48, size + 1)}px`; applyEditorStyles(); saveStore(); }
+  };
+  getEl('#decreaseFontSizeBtn').onclick = () => {
     const page = Store.pages[AppState.activePageId];
-    if (page) { let size = parseInt(page.fontSize, 10); page.fontSize = `${Math.max(10, size - 1)}px`; applyEditorStyles(); saveStore(); }
-  });
-
+    if (page) { let size = parseInt(page.fontSize || '16', 10); page.fontSize = `${Math.max(10, size - 1)}px`; applyEditorStyles(); saveStore(); }
+  };
   getEl('#duplicatePageBtn').onclick = () => { if (AppState.activePageId) duplicatePage(AppState.activePageId); };
-  getEl('#deletePageBtn').onclick = () => { if (AppState.activePageId && confirm('Eliminare definitivamente questa pagina?')) deletePage(AppState.activePageId); };
-
-  // Canvas
-  canvas.addEventListener('mousedown', startDraw); canvas.addEventListener('mousemove', draw); canvas.addEventListener('mouseup', endDraw); canvas.addEventListener('mouseleave', endDraw);
-  getEl('#penTool').onclick = () => { canvasState.tool = 'pen'; getEl('#penTool').classList.add('active'); getEl('#eraserTool').classList.remove('active'); };
-  getEl('#eraserTool').onclick = () => { canvasState.tool = 'eraser'; getEl('#eraserTool').classList.add('active'); getEl('#penTool').classList.remove('active'); };
-  getEl('#colorChooser').oninput = (e) => canvasState.color = e.target.value;
-  getEl('#widthChooser').oninput = (e) => canvasState.width = e.target.value;
-  getEl('#clearCanvasBtn').onclick = () => {
-    if (confirm('Pulire la canvas?')) {
-      const page = Store.pages[AppState.activePageId];
-      if (page) { page.strokes = []; saveStore(); drawReplay(); }
-    }
-  };
-  getEl('#exportCanvasBtn').onclick = () => {
-    const page = Store.pages[AppState.activePageId];
-    if (page) { downloadFile(`${page.title}-canvas.png`, canvas.toDataURL('image/png')); }
-  };
-
-  // Esporta/Importa dati
+  getEl('#deletePageBtn').onclick = () => { if (AppState.activePageId) deletePage(AppState.activePageId); };
   getEl('#exportDataBtn').onclick = () => {
-    downloadFile(`gpt-notes-${REPO_SEGMENT || 'root'}.json`, JSON.stringify(Store, null, 2), 'application/json');
+    downloadFile(`gpt-notes-data.json`, JSON.stringify(Store, null, 2), 'application/json');
   };
-  getEl('#importDataInput').onchange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    try {
-      const text = await file.text();
-      const json = JSON.parse(text);
-      if (!json || typeof json !== 'object') throw new Error('Formato non valido');
-      Store = json;
-      saveStore();
-      refreshUI();
-      alert('Import completato.');
-    } catch (err) {
-      console.error(err);
-      alert('Errore durante l\'import. Verifica il file.');
-    } finally {
-      e.target.value = '';
-    }
+  getEl('#importDataInput').onchange = (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = JSON.parse(event.target.result);
+        if (!json.notebooks || !json.sections || !json.pages) throw new Error('File non valido');
+        Store = json;
+        AppState = { activeNotebookId: null, activeSectionId: null, activePageId: null };
+        saveStore(); initApp(); alert('Dati importati con successo!');
+      } catch (err) { alert('Errore: impossibile importare il file.'); }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
   };
 }
 
-// Initialize application
-function init() {
-  document.addEventListener('DOMContentLoaded', () => {
+function initApp() {
     loadStore();
     if (Store.notebookOrder.length > 0 && !AppState.activeNotebookId) {
-      AppState.activeNotebookId = Store.notebookOrder[0];
+      AppState.activeNotebookId = Store.notebookOrder[0] || null;
       const nb = Store.notebooks[AppState.activeNotebookId];
       if (nb && nb.sections.length > 0) {
         AppState.activeSectionId = nb.sections[0];
@@ -892,11 +922,17 @@ function init() {
         if (sec && sec.pages.length > 0) { AppState.activePageId = sec.pages[0]; }
       }
     }
-    populateFontSelector(); setupEventListeners(); refreshUI();
-    getEl('#loader').style.display = 'none'; getEl('#app-container').classList.add('loaded');
-  });
+    populateFontSelector(); 
+    refreshUI();
+    getEl('#loader').style.display = 'none'; 
+    getEl('#app-container').classList.add('loaded');
 }
-init();
+
+document.addEventListener('DOMContentLoaded', () => {
+  setupEventListeners();
+  initApp();
+});
+
 </script>
 </body>
 </html>
