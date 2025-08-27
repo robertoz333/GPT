@@ -278,9 +278,241 @@
       line-height: 1.7;
       outline: none;
       box-shadow: inset 0 2px 10px rgba(0,0,0,.2);
+      position: relative;
     }
     #editor-area:focus { border-color: var(--accent-primary); }
-    #editor-area img { max-width: 100%; border-radius: 8px; }
+    
+    /* Image styles with resize handles */
+    #editor-area img {
+      max-width: 100%;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+    
+    #editor-area img:hover {
+      box-shadow: 0 0 0 2px var(--accent-primary);
+    }
+    
+    #editor-area img.selected {
+      box-shadow: 0 0 0 2px var(--accent-primary);
+      position: relative;
+    }
+    
+    /* Resize handles */
+    .resize-handles {
+      position: absolute;
+      pointer-events: none;
+      z-index: 10;
+    }
+    
+    .resize-handle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background: var(--accent-primary);
+      border: 1px solid white;
+      border-radius: 50%;
+      pointer-events: all;
+      cursor: nw-resize;
+    }
+    
+    .resize-handle.nw { top: -4px; left: -4px; cursor: nw-resize; }
+    .resize-handle.ne { top: -4px; right: -4px; cursor: ne-resize; }
+    .resize-handle.sw { bottom: -4px; left: -4px; cursor: sw-resize; }
+    .resize-handle.se { bottom: -4px; right: -4px; cursor: se-resize; }
+    .resize-handle.n { top: -4px; left: 50%; transform: translateX(-50%); cursor: n-resize; }
+    .resize-handle.s { bottom: -4px; left: 50%; transform: translateX(-50%); cursor: s-resize; }
+    .resize-handle.w { top: 50%; left: -4px; transform: translateY(-50%); cursor: w-resize; }
+    .resize-handle.e { top: 50%; right: -4px; transform: translateY(-50%); cursor: e-resize; }
+    
+    /* Drag and drop styles */
+    #editor-area.drag-over {
+      border-color: var(--accent-primary);
+      background-color: rgba(140, 170, 238, 0.1);
+    }
+    
+    .drop-indicator {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(140, 170, 238, 0.1);
+      border: 2px dashed var(--accent-primary);
+      border-radius: 12px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: var(--accent-primary);
+      pointer-events: none;
+      z-index: 10;
+    }
+    
+    /* Image context menu */
+    .image-context-menu {
+      position: absolute;
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 8px 0;
+      box-shadow: var(--shadow-dark);
+      z-index: 1000;
+      min-width: 200px;
+      display: none;
+    }
+    
+    .context-menu-item {
+      padding: 8px 16px;
+      cursor: pointer;
+      color: var(--text-primary);
+      transition: background-color 0.2s;
+    }
+    
+    .context-menu-item:hover {
+      background: var(--bg-secondary);
+    }
+    
+    .context-menu-separator {
+      height: 1px;
+      background: var(--border-color);
+      margin: 4px 0;
+    }
+    
+    /* Image size modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+    
+    .modal {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: var(--shadow-dark);
+    }
+    
+    .modal h3 {
+      margin: 0 0 16px 0;
+      color: var(--text-primary);
+    }
+    
+    .modal-form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    .form-group label {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+    
+    .form-group input, .form-group select {
+      padding: 8px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      outline: none;
+    }
+    
+    .form-group input:focus, .form-group select:focus {
+      border-color: var(--accent-primary);
+    }
+    
+    .modal-buttons {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 16px;
+    }
+    
+    /* Added rich text formatting toolbar styles */
+    .formatting-toolbar {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    
+    .toolbar-group {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      padding-right: 8px;
+      border-right: 1px solid var(--border-color);
+    }
+    
+    .toolbar-group:last-child {
+      border-right: none;
+    }
+    
+    .toolbar-btn {
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 6px 8px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+      min-width: 32px;
+      text-align: center;
+      color: white;
+    }
+    
+    .toolbar-btn:hover {
+      background: var(--accent-primary);
+      color: white;
+    }
+    
+    .toolbar-btn.active {
+      background: var(--accent-primary);
+      color: white;
+    }
+    
+    .toolbar-select {
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 14px;
+      cursor: pointer;
+      color: var(--text-primary);
+    }
+    
+    .color-picker {
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      cursor: pointer;
+      background: transparent;
+    }
     
     .card {
       background: var(--panel-bg); border: 1px solid var(--border-color);
@@ -317,6 +549,36 @@
       animation: spin 1s linear infinite;
     }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    /* Link styles */
+    #editor-area a {
+      color: var(--accent-primary);
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    #editor-area a:hover {
+      color: var(--accent-secondary);
+    }
+
+    /* Table styles */
+    #editor-area table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 10px 0;
+      background: var(--bg-secondary);
+    }
+    #editor-area table td, #editor-area table th {
+      padding: 8px;
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+    }
+    #editor-area table th {
+      background: var(--panel-bg);
+      font-weight: bold;
+    }
+    #editor-area table:focus {
+      outline: 2px solid var(--accent-primary);
+    }
   </style>
 </head>
 <body>
@@ -365,25 +627,194 @@
           <div id="page-title-container">
             <input id="page-title-input" placeholder="Il mio nuovo capolavoro..." readonly />
           </div>
-          <div id="editor-area" contenteditable="true"></div>
+          
+          <!-- Added rich text formatting toolbar -->
+          <div class="formatting-toolbar">
+            <div class="toolbar-group">
+              <button class="toolbar-btn" onclick="execCommand('undo')" title="Annulla">⟲</button>
+              <button class="toolbar-btn" onclick="execCommand('redo')" title="Ripeti">⟳</button>
+            </div>
+            
+            <div class="toolbar-group">
+              <select class="toolbar-select" onchange="changeFontFamily(this.value)">
+                <option value="Arial">Arial</option>
+                <option value="Georgia">Georgia</option>
+                <option value="Times New Roman">Times New Roman</option>
+                <option value="Helvetica">Helvetica</option>
+                <option value="Verdana">Verdana</option>
+                <option value="Courier New">Courier New</option>
+                <option value="Comic Sans MS">Comic Sans MS</option>
+              </select>
+              
+              <select class="toolbar-select" onchange="changeFontSize(this.value)">
+                <option value="1">Piccolo</option>
+                <option value="2">Normale</option>
+                <option value="3" selected>Medio</option>
+                <option value="4">Grande</option>
+                <option value="5">Molto Grande</option>
+                <option value="6">Enorme</option>
+                <option value="7">Gigante</option>
+              </select>
+            </div>
+            
+            <div class="toolbar-group">
+              <button class="toolbar-btn" onclick="execCommand('bold')" title="Grassetto"><b>B</b></button>
+              <button class="toolbar-btn" onclick="execCommand('italic')" title="Corsivo"><i>I</i></button>
+              <button class="toolbar-btn" onclick="execCommand('underline')" title="Sottolineato"><u>U</u></button>
+              <button class="toolbar-btn" onclick="execCommand('strikeThrough')" title="Barrato"><s>S</s></button>
+            </div>
+            
+            <div class="toolbar-group">
+              <input type="color" class="color-picker" onchange="changeTextColor(this.value)" title="Colore testo" value="#cad3f5">
+              <input type="color" class="color-picker" onchange="changeBackgroundColor(this.value)" title="Colore sfondo" value="#1a1c2c">
+            </div>
+            
+            <div class="toolbar-group">
+              <button class="toolbar-btn" onclick="execCommand('justifyLeft')" title="Allinea a sinistra">◀</button>
+              <button class="toolbar-btn" onclick="execCommand('justifyCenter')" title="Centra">▣</button>
+              <button class="toolbar-btn" onclick="execCommand('justifyRight')" title="Allinea a destra">▶</button>
+              <button class="toolbar-btn" onclick="execCommand('justifyFull')" title="Giustifica">▦</button>
+            </div>
+            
+            <div class="toolbar-group">
+              <button class="toolbar-btn" onclick="execCommand('insertUnorderedList')" title="Lista puntata">• Lista</button>
+              <button class="toolbar-btn" onclick="execCommand('insertOrderedList')" title="Lista numerata">1. Lista</button>
+              <button class="toolbar-btn" onclick="execCommand('outdent')" title="Riduci rientro">◀</button>
+              <button class="toolbar-btn" onclick="execCommand('indent')" title="Aumenta rientro">▶</button>
+            </div>
+            
+            <div class="toolbar-group">
+              <button class="toolbar-btn" onclick="insertLink()" title="Inserisci link">⛓</button>
+              <button class="toolbar-btn" onclick="insertImage()" title="Inserisci immagine">🖼</button>
+              <button class="toolbar-btn" onclick="insertTable()" title="Inserisci tabella">⊞</button>
+            </div>
+            
+            <div class="toolbar-group">
+              <select class="toolbar-select" id="image-size-preset" onchange="applyImageSizePreset(this.value)" title="Dimensioni immagine predefinite">
+                <option value="">Dimensioni immagine</option>
+                <option value="small">Piccola (25%)</option>
+                <option value="medium">Media (50%)</option>
+                <option value="large">Grande (75%)</option>
+                <option value="full">Piena (100%)</option>
+                <option value="custom">Personalizzata...</option>
+              </select>
+            </div>
+            
+            <div class="toolbar-group">
+              <button class="toolbar-btn" onclick="execCommand('removeFormat')" title="Rimuovi formattazione">✕</button>
+            </div>
+          </div>
+          
+          <div id="editor-area" contenteditable="true">
+            <div class="drop-indicator">
+              📁 Trascina qui le immagini per inserirle
+            </div>
+          </div>
         </div>
       </div>
 
       <div id="canvas-view" class="view">
-        <p>Il contenuto delle viste Canvas, Allegati, ecc. è omesso per brevità.</p>
+        <div class="view-content">
+          <h3>Canvas - Lavagna Digitale</h3>
+          <div class="card">
+            <p>Disegna, schizza e crea diagrammi per la pagina corrente.</p>
+            <canvas id="drawing-canvas" width="800" height="400" style="border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-primary); cursor: crosshair; width: 100%; max-width: 800px;"></canvas>
+            <div style="margin-top: 10px; display: flex; gap: 10px; align-items: center;">
+              <button id="clear-canvas" class="btn">Pulisci</button>
+              <button id="save-drawing" class="btn primary">Salva nel Editor</button>
+              <label>Colore:</label>
+              <input type="color" id="color-picker" value="#8caaee" style="width: 40px; height: 30px; border: none; border-radius: 4px;">
+              <label>Dimensione:</label>
+              <input type="range" id="size-picker" min="1" max="20" value="3" style="width: 100px;">
+              <span id="brush-size-display">3px</span>
+            </div>
+          </div>
+        </div>
       </div>
-      <div id="attachments-view" class="view"></div>
+      <div id="attachments-view" class="view">
+        <div class="view-content">
+          <h3>Allegati</h3>
+          <div class="card">
+            <p>Gestisci i file allegati alla pagina corrente.</p>
+            <div style="margin: 15px 0;">
+              <input type="file" id="file-input" multiple accept="image/*,application/pdf,.txt,.doc,.docx" style="margin-bottom: 10px;">
+              <button id="upload-files" class="btn primary">Carica File</button>
+            </div>
+            <div id="attachments-list" style="display: flex; flex-direction: column; gap: 10px;">
+              <!-- Gli allegati verranno mostrati qui -->
+            </div>
+          </div>
+        </div>
+      </div>
       <div id="info-view" class="view">
         <div class="view-content">
-          <h3>Informazioni Pagina</h3><div id="page-metadata" class="card"></div>
-           <h3 style="margin-top: 30px;">Azioni</h3>
-           <div style="display: flex; gap: 10px;"><button id="duplicatePageBtn" class="btn">Duplica</button><button id="deletePageBtn" class="btn danger">Elimina Pagina</button></div>
+          <h3>Informazioni Pagina</h3>
+          <div id="page-metadata" class="card">
+            <!-- Le informazioni della pagina verranno mostrate qui -->
+          </div>
+          <div class="card" style="margin-top: 15px;">
+            <h4 id="page-stats" style="margin-bottom: 10px;">Statistiche</h4>
+            <!-- Le statistiche verranno mostrate qui -->
+          </div>
+          <div class="card" style="margin-top: 15px;">
+            <h4 style="margin-bottom: 10px;">Azioni</h4>
+            <div style="display: flex; gap: 10px;">
+              <button id="duplicate-page" class="btn">Duplica Pagina</button>
+              <button id="delete-page" class="btn danger">Elimina Pagina</button>
+            </div>
+          </div>
         </div>
       </div>
     </main>
   </div>
   
   <div id="color-palette"></div>
+  
+  <!-- Image context menu -->
+  <div id="image-context-menu" class="image-context-menu">
+    <div class="context-menu-item" onclick="resizeSelectedImage('small')">Piccola (25%)</div>
+    <div class="context-menu-item" onclick="resizeSelectedImage('medium')">Media (50%)</div>
+    <div class="context-menu-item" onclick="resizeSelectedImage('large')">Grande (75%)</div>
+    <div class="context-menu-item" onclick="resizeSelectedImage('full')">Piena (100%)</div>
+    <div class="context-menu-separator"></div>
+    <div class="context-menu-item" onclick="openImageSizeModal()">Dimensioni personalizzate...</div>
+    <div class="context-menu-separator"></div>
+    <div class="context-menu-item" onclick="deleteSelectedImage()">Elimina immagine</div>
+  </div>
+  
+  <!-- Image size modal -->
+  <div id="image-size-modal" class="modal-overlay">
+    <div class="modal">
+      <h3>Dimensioni Immagine</h3>
+      <form class="modal-form" onsubmit="applyCustomImageSize(event)">
+        <div class="form-group">
+          <label>Unità di misura:</label>
+          <select id="size-unit">
+            <option value="percent">Percentuale (%)</option>
+            <option value="pixels">Pixel (px)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Larghezza:</label>
+          <input type="number" id="image-width" min="1" max="2000" value="50">
+        </div>
+        <div class="form-group">
+          <label>Altezza:</label>
+          <input type="number" id="image-height" min="1" max="2000" value="50">
+        </div>
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="maintain-aspect-ratio" checked>
+            Mantieni proporzioni
+          </label>
+        </div>
+        <div class="modal-buttons">
+          <button type="button" class="btn" onclick="closeImageSizeModal()">Annulla</button>
+          <button type="submit" class="btn primary">Applica</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -405,6 +836,20 @@ document.addEventListener('DOMContentLoaded', () => {
 /* -------------------- UTILITIES -------------------- */
 const getEl = sel => document.querySelector(sel);
 const createId = (prefix = 'id') => `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+let canvasContext = null;
+let isDrawing = false;
+let currentColor = '#8caaee';
+let currentSize = 3;
+let pageTitleInput = null;
+let selectedImage = null;
+let resizeHandles = null;
+let isResizing = false;
+let resizeStartX = 0;
+let resizeStartY = 0;
+let resizeStartWidth = 0;
+let resizeStartHeight = 0;
+let resizeHandle = null;
 
 // --- FUNZIONE ESPORTA CORRETTA ---
 const downloadFile = (name, content, type = 'application/json') => {
@@ -445,6 +890,380 @@ function makeEditable(inputEl, saveCallback) {
     inputEl.addEventListener('blur', onBlur);
     inputEl.addEventListener('keyup', onKeyup);
 }
+
+/* -------------------- IMAGE RESIZE FUNCTIONALITY -------------------- */
+function createResizeHandles() {
+  if (resizeHandles) {
+    resizeHandles.remove();
+  }
+  
+  resizeHandles = document.createElement('div');
+  resizeHandles.className = 'resize-handles';
+  
+  const handles = ['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se'];
+  handles.forEach(position => {
+    const handle = document.createElement('div');
+    handle.className = `resize-handle ${position}`;
+    handle.dataset.position = position;
+    resizeHandles.appendChild(handle);
+  });
+  
+  document.body.appendChild(resizeHandles);
+  return resizeHandles;
+}
+
+function showResizeHandles(img) {
+  if (!resizeHandles) {
+    createResizeHandles();
+  }
+  
+  const rect = img.getBoundingClientRect();
+  const editorRect = getEl('#editor-area').getBoundingClientRect();
+  
+  resizeHandles.style.display = 'block';
+  resizeHandles.style.left = (rect.left - editorRect.left + getEl('#editor-area').scrollLeft) + 'px';
+  resizeHandles.style.top = (rect.top - editorRect.top + getEl('#editor-area').scrollTop) + 'px';
+  resizeHandles.style.width = rect.width + 'px';
+  resizeHandles.style.height = rect.height + 'px';
+}
+
+function hideResizeHandles() {
+  if (resizeHandles) {
+    resizeHandles.style.display = 'none';
+  }
+}
+
+function selectImage(img) {
+  // Deselect previous image
+  if (selectedImage) {
+    selectedImage.classList.remove('selected');
+  }
+  
+  selectedImage = img;
+  img.classList.add('selected');
+  showResizeHandles(img);
+}
+
+function deselectImage() {
+  if (selectedImage) {
+    selectedImage.classList.remove('selected');
+    selectedImage = null;
+  }
+  hideResizeHandles();
+}
+
+function initImageResize() {
+  const editorArea = getEl('#editor-area');
+  
+  // Handle image clicks
+  editorArea.addEventListener('click', (e) => {
+    if (e.target.tagName === 'IMG') {
+      e.preventDefault();
+      e.stopPropagation();
+      selectImage(e.target);
+    } else {
+      deselectImage();
+    }
+  });
+  
+  // Handle right-click on images
+  editorArea.addEventListener('contextmenu', (e) => {
+    if (e.target.tagName === 'IMG') {
+      e.preventDefault();
+      selectImage(e.target);
+      showImageContextMenu(e);
+    }
+  });
+  
+  // Handle resize handles
+  document.addEventListener('mousedown', (e) => {
+    if (e.target.classList.contains('resize-handle')) {
+      e.preventDefault();
+      startResize(e);
+    }
+  });
+  
+  document.addEventListener('mousemove', (e) => {
+    if (isResizing) {
+      doResize(e);
+    }
+  });
+  
+  document.addEventListener('mouseup', () => {
+    if (isResizing) {
+      stopResize();
+    }
+  });
+  
+  // Hide context menu on click elsewhere
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#image-context-menu')) {
+      hideImageContextMenu();
+    }
+  });
+}
+
+function startResize(e) {
+  if (!selectedImage) return;
+  
+  isResizing = true;
+  resizeHandle = e.target.dataset.position;
+  resizeStartX = e.clientX;
+  resizeStartY = e.clientY;
+  resizeStartWidth = selectedImage.offsetWidth;
+  resizeStartHeight = selectedImage.offsetHeight;
+  
+  document.body.style.cursor = e.target.style.cursor;
+  e.preventDefault();
+}
+
+function doResize(e) {
+  if (!isResizing || !selectedImage) return;
+  
+  const deltaX = e.clientX - resizeStartX;
+  const deltaY = e.clientY - resizeStartY;
+  
+  let newWidth = resizeStartWidth;
+  let newHeight = resizeStartHeight;
+  
+  switch (resizeHandle) {
+    case 'se':
+      newWidth = resizeStartWidth + deltaX;
+      newHeight = resizeStartHeight + deltaY;
+      break;
+    case 'sw':
+      newWidth = resizeStartWidth - deltaX;
+      newHeight = resizeStartHeight + deltaY;
+      break;
+    case 'ne':
+      newWidth = resizeStartWidth + deltaX;
+      newHeight = resizeStartHeight - deltaY;
+      break;
+    case 'nw':
+      newWidth = resizeStartWidth - deltaX;
+      newHeight = resizeStartHeight - deltaY;
+      break;
+    case 'e':
+      newWidth = resizeStartWidth + deltaX;
+      break;
+    case 'w':
+      newWidth = resizeStartWidth - deltaX;
+      break;
+    case 's':
+      newHeight = resizeStartHeight + deltaY;
+      break;
+    case 'n':
+      newHeight = resizeStartHeight - deltaY;
+      break;
+  }
+  
+  // Maintain minimum size
+  newWidth = Math.max(50, newWidth);
+  newHeight = Math.max(50, newHeight);
+  
+  selectedImage.style.width = newWidth + 'px';
+  selectedImage.style.height = newHeight + 'px';
+  
+  showResizeHandles(selectedImage);
+}
+
+function stopResize() {
+  isResizing = false;
+  document.body.style.cursor = '';
+  
+  // Save the updated content
+  if (AppState.activePageId) {
+    const page = Store.pages[AppState.activePageId];
+    page.html = getEl('#editor-area').innerHTML;
+    page.updatedAt = new Date().toISOString();
+    saveStore();
+    displayPageInfo();
+  }
+}
+
+function showImageContextMenu(e) {
+  const menu = getEl('#image-context-menu');
+  menu.style.display = 'block';
+  menu.style.left = e.pageX + 'px';
+  menu.style.top = e.pageY + 'px';
+}
+
+function hideImageContextMenu() {
+  getEl('#image-context-menu').style.display = 'none';
+}
+
+function resizeSelectedImage(size) {
+  if (!selectedImage) return;
+  
+  const editorArea = getEl('#editor-area');
+  const maxWidth = editorArea.offsetWidth - 40; // Account for padding
+  
+  switch (size) {
+    case 'small':
+      selectedImage.style.width = (maxWidth * 0.25) + 'px';
+      selectedImage.style.height = 'auto';
+      break;
+    case 'medium':
+      selectedImage.style.width = (maxWidth * 0.5) + 'px';
+      selectedImage.style.height = 'auto';
+      break;
+    case 'large':
+      selectedImage.style.width = (maxWidth * 0.75) + 'px';
+      selectedImage.style.height = 'auto';
+      break;
+    case 'full':
+      selectedImage.style.width = maxWidth + 'px';
+      selectedImage.style.height = 'auto';
+      break;
+  }
+  
+  showResizeHandles(selectedImage);
+  hideImageContextMenu();
+  
+  // Save the updated content
+  if (AppState.activePageId) {
+    const page = Store.pages[AppState.activePageId];
+    page.html = getEl('#editor-area').innerHTML;
+    page.updatedAt = new Date().toISOString();
+    saveStore();
+    displayPageInfo();
+  }
+}
+
+function deleteSelectedImage() {
+  if (!selectedImage) return;
+  
+  if (confirm('Sei sicuro di voler eliminare questa immagine?')) {
+    selectedImage.remove();
+    deselectImage();
+    hideImageContextMenu();
+    
+    // Save the updated content
+    if (AppState.activePageId) {
+      const page = Store.pages[AppState.activePageId];
+      page.html = getEl('#editor-area').innerHTML;
+      page.updatedAt = new Date().toISOString();
+      saveStore();
+      displayPageInfo();
+    }
+  }
+}
+
+function openImageSizeModal() {
+  if (!selectedImage) return;
+  
+  const modal = getEl('#image-size-modal');
+  const widthInput = getEl('#image-width');
+  const heightInput = getEl('#image-height');
+  const unitSelect = getEl('#size-unit');
+  
+  // Get current dimensions
+  const currentWidth = selectedImage.offsetWidth;
+  const currentHeight = selectedImage.offsetHeight;
+  const editorWidth = getEl('#editor-area').offsetWidth - 40;
+  
+  // Set current values
+  if (unitSelect.value === 'percent') {
+    widthInput.value = Math.round((currentWidth / editorWidth) * 100);
+    heightInput.value = Math.round((currentHeight / editorWidth) * 100);
+  } else {
+    widthInput.value = currentWidth;
+    heightInput.value = currentHeight;
+  }
+  
+  modal.style.display = 'flex';
+  hideImageContextMenu();
+}
+
+function closeImageSizeModal() {
+  getEl('#image-size-modal').style.display = 'none';
+}
+
+function applyCustomImageSize(e) {
+  e.preventDefault();
+  if (!selectedImage) return;
+  
+  const widthInput = getEl('#image-width');
+  const heightInput = getEl('#image-height');
+  const unitSelect = getEl('#size-unit');
+  const maintainRatio = getEl('#maintain-aspect-ratio').checked;
+  
+  const width = parseInt(widthInput.value);
+  const height = parseInt(heightInput.value);
+  
+  if (unitSelect.value === 'percent') {
+    const editorWidth = getEl('#editor-area').offsetWidth - 40;
+    selectedImage.style.width = (editorWidth * width / 100) + 'px';
+    if (maintainRatio) {
+      selectedImage.style.height = 'auto';
+    } else {
+      selectedImage.style.height = (editorWidth * height / 100) + 'px';
+    }
+  } else {
+    selectedImage.style.width = width + 'px';
+    if (maintainRatio) {
+      selectedImage.style.height = 'auto';
+    } else {
+      selectedImage.style.height = height + 'px';
+    }
+  }
+  
+  showResizeHandles(selectedImage);
+  closeImageSizeModal();
+  
+  // Save the updated content
+  if (AppState.activePageId) {
+    const page = Store.pages[AppState.activePageId];
+    page.html = getEl('#editor-area').innerHTML;
+    page.updatedAt = new Date().toISOString();
+    saveStore();
+    displayPageInfo();
+  }
+}
+
+function applyImageSizePreset(size) {
+  if (!size) return;
+  
+  if (size === 'custom') {
+    if (selectedImage) {
+      openImageSizeModal();
+    } else {
+      alert('Seleziona prima un\'immagine cliccandoci sopra.');
+    }
+  } else {
+    if (selectedImage) {
+      resizeSelectedImage(size);
+    } else {
+      alert('Seleziona prima un\'immagine cliccandoci sopra.');
+    }
+  }
+  
+  // Reset select
+  getEl('#image-size-preset').value = '';
+}
+
+// Handle aspect ratio maintenance in modal
+document.addEventListener('DOMContentLoaded', () => {
+  const widthInput = getEl('#image-width');
+  const heightInput = getEl('#image-height');
+  const maintainRatio = getEl('#maintain-aspect-ratio');
+  
+  let aspectRatio = 1;
+  
+  widthInput.addEventListener('input', () => {
+    if (maintainRatio.checked && selectedImage) {
+      const naturalRatio = selectedImage.naturalWidth / selectedImage.naturalHeight;
+      heightInput.value = Math.round(widthInput.value / naturalRatio);
+    }
+  });
+  
+  heightInput.addEventListener('input', () => {
+    if (maintainRatio.checked && selectedImage) {
+      const naturalRatio = selectedImage.naturalWidth / selectedImage.naturalHeight;
+      widthInput.value = Math.round(heightInput.value * naturalRatio);
+    }
+  });
+});
 
 /* -------------------- CORE STATE & DB -------------------- */
 const DB_KEY = `gpt_notes_v8_${REPO_SEGMENT || 'root'}`;
@@ -490,7 +1309,7 @@ function createSection(notebookId, title, persist = true) {
 function createPage(sectionId, title, persist = true) {
   const id = createId('pg');
   const now = new Date().toISOString();
-  const page = { id, sectionId, title, html: '<p></p>', createdAt: now, updatedAt: now, color: null };
+  const page = { id, sectionId, title, html: '<p></p>', createdAt: now, updatedAt: now, color: null, attachments: [] };
   Store.pages[id] = page;
   Store.sections[sectionId].pages.push(id);
   if (persist) saveStore();
@@ -666,7 +1485,6 @@ function displayActivePage() {
     const page = Store.pages[AppState.activePageId];
     const editorWrapper = getEl('#editor-view .view-content');
     const pageTitleContainer = getEl('#page-title-container');
-    const pageTitleInput = getEl('#page-title-input');
     const oldEditBtn = pageTitleContainer.querySelector('.action-btn');
     if(oldEditBtn) oldEditBtn.remove();
     if (!page) { 
@@ -692,12 +1510,214 @@ function displayActivePage() {
     pageTitleContainer.appendChild(editBtn);
 }
 
+function displayAttachments() {
+  const container = getEl('#attachments-list');
+  if (!container) return;
+  
+  if (!AppState.activePageId) {
+    container.innerHTML = '<p>Seleziona una pagina per vedere gli allegati.</p>';
+    return;
+  }
+  
+  const page = Store.pages[AppState.activePageId];
+  const attachments = page.attachments || [];
+  
+  if (attachments.length === 0) {
+    container.innerHTML = '<p>Nessun allegato per questa pagina.</p>';
+    return;
+  }
+  
+  container.innerHTML = attachments.map(att => `
+    <div class="attachment-item" style="border: 1px solid var(--border-color); padding: 10px; margin: 5px 0; border-radius: 5px; background: var(--bg-primary);">
+      <div style="font-weight: bold; color: var(--text-primary);">${att.name}</div>
+      <div style="font-size: 0.9em; color: var(--text-secondary);">
+        Tipo: ${att.type} | Dimensione: ${(att.size / 1024).toFixed(1)} KB
+      </div>
+      <div style="margin-top: 5px;">
+        ${att.type.startsWith('image/') ? 
+          `<button onclick="insertImageInEditor('${att.id}')" class="btn" style="margin-right: 5px;">Inserisci nell'editor</button>` : 
+          ''
+        }
+        <button onclick="removeAttachment('${att.id}')" class="btn danger">Rimuovi</button>
+      </div>
+      ${att.type.startsWith('image/') ? 
+        `<img src="${att.data}" style="max-width: 200px; max-height: 150px; margin-top: 5px; border-radius: 4px;" alt="${att.name}">` : 
+        ''
+      }
+    </div>
+  `).join('');
+}
+
+function displayPageInfo() {
+  const metadataContainer = getEl('#page-metadata');
+  const statsContainer = getEl('#page-stats');
+  if (!metadataContainer || !statsContainer) return;
+  
+  if (!AppState.activePageId) {
+    metadataContainer.innerHTML = '<p>Seleziona una pagina per vedere le informazioni.</p>';
+    statsContainer.innerHTML = '';
+    return;
+  }
+  
+  const page = Store.pages[AppState.activePageId];
+  const section = Store.sections[page.sectionId];
+  const notebook = Store.notebooks[section.notebookId];
+  
+  const wordCount = page.html.replace(/<[^>]*>/g, '').split(/\s+/).filter(word => word.length > 0).length;
+  const charCount = page.html.replace(/<[^>]*>/g, '').length;
+  const attachmentCount = page.attachments ? page.attachments.length : 0;
+  
+  metadataContainer.innerHTML = `
+    <h4 style="margin-bottom: 10px;">Dettagli</h4>
+    <p><strong>Titolo:</strong> ${page.title}</p>
+    <p><strong>Sezione:</strong> ${section.title}</p>
+    <p><strong>Taccuino:</strong> ${notebook.title}</p>
+    <p><strong>Creata:</strong> ${new Date(page.createdAt).toLocaleString()}</p>
+    <p><strong>Modificata:</strong> ${new Date(page.updatedAt).toLocaleString()}</p>
+  `;
+  
+  statsContainer.innerHTML = `
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; text-align: center;">
+      <div>
+        <div style="font-size: 24px; font-weight: bold; color: var(--accent-primary);">${wordCount}</div>
+        <div style="font-size: 12px; color: var(--text-secondary);">Parole</div>
+      </div>
+      <div>
+        <div style="font-size: 24px; font-weight: bold; color: var(--accent-primary);">${charCount}</div>
+        <div style="font-size: 12px; color: var(--text-secondary);">Caratteri</div>
+      </div>
+      <div>
+        <div style="font-size: 24px; font-weight: bold; color: var(--accent-primary);">${attachmentCount}</div>
+        <div style="font-size: 12px; color: var(--text-secondary);">Allegati</div>
+      </div>
+    </div>
+  `;
+}
+
 function refreshUI() {
   displayNotebooks(); 
   displayPages(); 
   displayActivePage();
+  displayAttachments(); 
+  displayPageInfo(); 
   getEl('#addSectionBtn').disabled = !AppState.activeNotebookId;
   getEl('#addPageBtn').disabled = !AppState.activeSectionId;
+}
+
+/* -------------------- DRAG AND DROP FUNCTIONALITY -------------------- */
+function initDragAndDrop() {
+  const editorArea = getEl('#editor-area');
+  const dropIndicator = editorArea.querySelector('.drop-indicator');
+  
+  // Prevent default drag behaviors
+  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    editorArea.addEventListener(eventName, preventDefaults, false);
+    document.body.addEventListener(eventName, preventDefaults, false);
+  });
+  
+  // Highlight drop area when item is dragged over it
+  ['dragenter', 'dragover'].forEach(eventName => {
+    editorArea.addEventListener(eventName, highlight, false);
+  });
+  
+  ['dragleave', 'drop'].forEach(eventName => {
+    editorArea.addEventListener(eventName, unhighlight, false);
+  });
+  
+  // Handle dropped files
+  editorArea.addEventListener('drop', handleDrop, false);
+  
+  function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  
+  function highlight(e) {
+    editorArea.classList.add('drag-over');
+    dropIndicator.style.display = 'flex';
+  }
+  
+  function unhighlight(e) {
+    editorArea.classList.remove('drag-over');
+    dropIndicator.style.display = 'none';
+  }
+  
+  function handleDrop(e) {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    
+    // Handle files from computer
+    if (files.length > 0) {
+      handleFiles(files);
+    } else {
+      // Handle images from web (URLs)
+      const imageUrl = dt.getData('text/uri-list') || dt.getData('text/plain');
+      if (imageUrl && (imageUrl.startsWith('http') || imageUrl.startsWith('data:'))) {
+        insertImageFromUrl(imageUrl);
+      }
+    }
+  }
+  
+  function handleFiles(files) {
+    if (!AppState.activePageId) {
+      alert('Seleziona una pagina per inserire immagini.');
+      return;
+    }
+    
+    Array.from(files).forEach(file => {
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          insertImageIntoEditor(e.target.result, file.name);
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
+  
+  function insertImageFromUrl(url) {
+    if (!AppState.activePageId) {
+      alert('Seleziona una pagina per inserire immagini.');
+      return;
+    }
+    
+    // Create a temporary image to check if URL is valid
+    const tempImg = new Image();
+    tempImg.onload = () => {
+      insertImageIntoEditor(url, 'Immagine da web');
+    };
+    tempImg.onerror = () => {
+      alert('Impossibile caricare l\'immagine dall\'URL fornito.');
+    };
+    tempImg.src = url;
+  }
+  
+  function insertImageIntoEditor(src, altText) {
+    const img = document.createElement('img');
+    img.src = src;
+    img.alt = altText;
+    img.style.maxWidth = '100%';
+    img.style.height = 'auto';
+    img.style.borderRadius = '8px';
+    img.style.margin = '10px 0';
+    
+    // Insert at cursor position or at the end
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      range.insertNode(img);
+      range.collapse(false);
+    } else {
+      editorArea.appendChild(img);
+    }
+    
+    // Save the updated content
+    const page = Store.pages[AppState.activePageId];
+    page.html = editorArea.innerHTML;
+    page.updatedAt = new Date().toISOString();
+    saveStore();
+    displayPageInfo();
+  }
 }
 
 /* -------------------- EVENT HANDLERS & APP LOGIC -------------------- */
@@ -713,68 +1733,558 @@ function setupEventListeners() {
   getEl('#addSectionBtn').onclick = () => { if(!AppState.activeNotebookId) return; const sec = createSection(AppState.activeNotebookId, 'Nuova Sezione'); AppState.activeSectionId = sec.id; refreshUI(); };
   getEl('#addPageBtn').onclick = () => { if(!AppState.activeSectionId) return; const page = createPage(AppState.activeSectionId, 'Nuova Pagina'); AppState.activePageId = page.id; refreshUI(); };
   
-  let saveTimeout;
-  const saveEditorContent = () => {
-    if (!AppState.activePageId) return;
-    const page = Store.pages[AppState.activePageId]; if (!page) return;
-    page.html = getEl('#editor-area').innerHTML; page.updatedAt = new Date().toISOString();
-    saveStore(); 
+  getEl('#exportDataBtn').onclick = () => {
+    const exportData = {
+      notebooks: Store.notebooks,
+      sections: Store.sections,
+      pages: Store.pages,
+      exportDate: new Date().toISOString(),
+      version: '1.0'
+    };
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+    downloadFile(`notebook-backup-${timestamp}.json`, JSON.stringify(exportData, null, 2));
   };
-  getEl('#editor-area').oninput = () => { clearTimeout(saveTimeout); saveTimeout = setTimeout(saveEditorContent, 1000); };
-  
-  getEl('#color-palette').addEventListener('click', (e) => {
-    const swatch = e.target.closest('.palette-swatch');
-    if (swatch && activePaletteContext) {
-      const color = swatch.dataset.color;
-      let target;
-      if (activePaletteContext.type === 'notebook') target = Store.notebooks[activePaletteContext.id];
-      else if (activePaletteContext.type === 'section') target = Store.sections[activePaletteContext.id];
-      else if (activePaletteContext.type === 'page') target = Store.pages[activePaletteContext.id];
-      if (target) { target.color = (target.color === color) ? null : color; }
-      saveStore(); refreshUI(); closeColorPalette();
-    }
-  });
-  document.addEventListener('click', (e) => {
-    if (!getEl('#color-palette').contains(e.target) && !e.target.closest('.color-dot')) { closeColorPalette(); }
-  });
-  getEl('#deletePageBtn').onclick = () => { if (AppState.activePageId) deletePage(AppState.activePageId); };
-  getEl('#exportDataBtn').onclick = () => { downloadFile(`gpt-notes-data.json`, JSON.stringify(Store, null, 2)); };
+
   getEl('#importDataInput').onchange = (e) => {
-    const file = e.target.files[0]; if (!file) return;
+    const file = e.target.files[0];
+    if (!file) return;
+    
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        const json = JSON.parse(event.target.result);
-        if (!json.notebooks || !json.sections || !json.pages) throw new Error('File non valido');
-        Store = json; AppState = { activeNotebookId: null, activeSectionId: null, activePageId: null };
-        saveStore(); initApp(); alert('Dati importati con successo!');
-      } catch (err) { alert('Errore: impossibile importare il file.'); }
+        const importData = JSON.parse(event.target.result);
+        if (importData.notebooks && importData.sections && importData.pages) {
+          if (confirm('Questo sostituirà tutti i dati esistenti. Continuare?')) {
+            Store.notebooks = importData.notebooks;
+            Store.sections = importData.sections;
+            Store.pages = importData.pages;
+            saveStore();
+            AppState.activeNotebookId = null;
+            AppState.activeSectionId = null;
+            AppState.activePageId = null;
+            refreshUI();
+            alert('Dati importati con successo!');
+          }
+        } else {
+          alert('File non valido. Assicurati di importare un backup valido.');
+        }
+      } catch (error) {
+        alert('Errore durante l\'importazione del file.');
+      }
     };
     reader.readAsText(file);
-    e.target.value = '';
+    e.target.value = ''; // Reset input
+  };
+  
+  document.addEventListener('click', (e) => {
+    if (e.target.classList.contains('palette-swatch')) {
+      const color = e.target.dataset.color;
+      if (activePaletteContext) {
+        const { type, id } = activePaletteContext;
+        if (type === 'notebook') Store.notebooks[id].color = color;
+        else if (type === 'section') Store.sections[id].color = color;
+        else if (type === 'page') Store.pages[id].color = color;
+        saveStore();
+        refreshUI();
+      }
+      closeColorPalette();
+    } else if (!e.target.closest('#color-palette') && !e.target.classList.contains('color-dot')) {
+      closeColorPalette();
+    }
+  });
+  
+  let saveTimeout;
+  getEl('#editor-area').addEventListener('input', () => {
+    if (!AppState.activePageId) return;
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(() => {
+      const page = Store.pages[AppState.activePageId];
+      page.html = getEl('#editor-area').innerHTML;
+      page.updatedAt = new Date().toISOString();
+      saveStore();
+      displayPageInfo(); // Update stats in real-time
+    }, 1000);
+  });
+
+  // Add keyboard event listener for table deletion
+  getEl('#editor-area').addEventListener('keydown', (e) => {
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      const selection = window.getSelection();
+      if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const selectedElement = range.commonAncestorContainer;
+        
+        // Check if a table is selected
+        let table = null;
+        if (selectedElement.nodeType === Node.ELEMENT_NODE && selectedElement.tagName === 'TABLE') {
+          table = selectedElement;
+        } else if (selectedElement.parentElement) {
+          table = selectedElement.parentElement.closest('table');
+        }
+        
+        if (table && selection.toString().includes(table.outerHTML.substring(0, 50))) {
+          e.preventDefault();
+          table.remove();
+          
+          // Save the updated content
+          if (AppState.activePageId) {
+            const page = Store.pages[AppState.activePageId];
+            page.html = getEl('#editor-area').innerHTML;
+            page.updatedAt = new Date().toISOString();
+            saveStore();
+            displayPageInfo();
+          }
+        }
+      }
+    }
+  });
+
+  // Handle link clicks in editor
+  getEl('#editor-area').addEventListener('click', (e) => {
+    if (e.target.tagName === 'A' && e.target.href) {
+      e.preventDefault();
+      // Open link in new tab
+      window.open(e.target.href, '_blank', 'noopener,noreferrer');
+    }
+  });
+}
+
+function initTabs() {
+  const tabButtons = document.querySelectorAll('.tab-btn');
+  const views = document.querySelectorAll('.view');
+  
+  tabButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetView = btn.getAttribute('data-view');
+      
+      // Remove active class from all tabs and views
+      tabButtons.forEach(b => b.classList.remove('active'));
+      views.forEach(v => v.classList.remove('active'));
+      
+      // Add active class to clicked tab and corresponding view
+      btn.classList.add('active');
+      document.getElementById(targetView).classList.add('active');
+      
+      // Update displays when switching tabs
+      if (targetView === 'canvas-view') {
+        initCanvas();
+      } else if (targetView === 'attachments-view') {
+        displayAttachments();
+      } else if (targetView === 'info-view') {
+        displayPageInfo();
+      }
+    });
+  });
+}
+
+function initPageActions() {
+  getEl('#duplicate-page').onclick = () => {
+    if (!AppState.activePageId) {
+      alert('Seleziona una pagina da duplicare.');
+      return;
+    }
+    
+    const originalPage = Store.pages[AppState.activePageId];
+    const newPage = {
+      id: createId('page'),
+      title: originalPage.title + ' (Copia)',
+      html: originalPage.html,
+      sectionId: originalPage.sectionId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      color: originalPage.color,
+      attachments: originalPage.attachments ? [...originalPage.attachments] : []
+    };
+    
+    Store.pages[newPage.id] = newPage;
+    const section = Store.sections[originalPage.sectionId];
+    section.pages.push(newPage.id);
+    
+    saveStore();
+    AppState.activePageId = newPage.id;
+    refreshUI();
+    
+    alert('Pagina duplicata con successo!');
+  };
+  
+  getEl('#delete-page').onclick = () => {
+    if (!AppState.activePageId) {
+      alert('Seleziona una pagina da eliminare.');
+      return;
+    }
+    
+    deletePage(AppState.activePageId);
   };
 }
 
-function initApp() {
-    loadStore();
-    if (Store.notebookOrder.length > 0) {
-      AppState.activeNotebookId = Store.notebookOrder[0];
-      const nb = Store.notebooks[AppState.activeNotebookId];
-      if (nb && nb.sections.length > 0) {
-        AppState.activeSectionId = nb.sections[0];
-        const sec = Store.sections[AppState.activeSectionId];
-        if (sec && sec.pages.length > 0) { AppState.activePageId = sec.pages[0]; }
-      }
-    }
-    refreshUI();
-    getEl('#loader').style.display = 'none'; 
-    getEl('#app-container').classList.add('loaded');
+function initCanvas() {
+  const canvas = getEl('#drawing-canvas');
+  if (!canvas) return;
+  
+  canvasContext = canvas.getContext('2d');
+  canvas.width = 800;
+  canvas.height = 400;
+  
+  // Update current color and size from controls
+  const colorPicker = getEl('#color-picker');
+  const sizePicker = getEl('#size-picker');
+  
+  if (colorPicker) {
+    currentColor = colorPicker.value;
+    colorPicker.addEventListener('change', (e) => {
+      currentColor = e.target.value;
+    });
+  }
+  
+  if (sizePicker) {
+    currentSize = parseInt(sizePicker.value);
+    sizePicker.addEventListener('input', (e) => {
+      currentSize = parseInt(e.target.value);
+      getEl('#brush-size-display').textContent = e.target.value + 'px';
+    });
+  }
+  
+  canvas.addEventListener('mousedown', startDrawing);
+  canvas.addEventListener('mousemove', draw);
+  canvas.addEventListener('mouseup', stopDrawing);
+  canvas.addEventListener('mouseout', stopDrawing);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function startDrawing(e) {
+  isDrawing = true;
+  const rect = e.target.getBoundingClientRect();
+  canvasContext.beginPath();
+  canvasContext.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+}
+
+function draw(e) {
+  if (!isDrawing) return;
+  const rect = e.target.getBoundingClientRect();
+  canvasContext.lineWidth = currentSize;
+  canvasContext.lineCap = 'round';
+  canvasContext.strokeStyle = currentColor;
+  canvasContext.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+  canvasContext.stroke();
+}
+
+function stopDrawing() {
+  isDrawing = false;
+}
+
+function initAttachments() {
+  const fileInput = getEl('#file-input');
+  const uploadBtn = getEl('#upload-files');
+  
+  if (uploadBtn) {
+    uploadBtn.addEventListener('click', () => {
+      if (!AppState.activePageId) {
+        alert('Seleziona una pagina per caricare allegati.');
+        return;
+      }
+      
+      const files = fileInput.files;
+      if (files.length === 0) {
+        alert('Seleziona almeno un file da caricare.');
+        return;
+      }
+      
+      const page = Store.pages[AppState.activePageId];
+      if (!page.attachments) page.attachments = [];
+      
+      Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const attachment = {
+            id: createId('att'),
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            data: e.target.result,
+            uploadedAt: new Date().toISOString()
+          };
+          
+          page.attachments.push(attachment);
+          page.updatedAt = new Date().toISOString();
+          saveStore();
+          displayAttachments();
+          displayPageInfo();
+        };
+        reader.readAsDataURL(file);
+      });
+      
+      fileInput.value = ''; // Clear the input
+    });
+  }
+}
+
+function insertImageInEditor(attachmentId) {
+  if (!AppState.activePageId) return;
+  
+  const page = Store.pages[AppState.activePageId];
+  const attachment = page.attachments.find(att => att.id === attachmentId);
+  if (!attachment) return;
+  
+  const editorArea = getEl('#editor-area');
+  const img = document.createElement('img');
+  img.src = attachment.data;
+  img.style.maxWidth = '100%';
+  img.style.height = 'auto';
+  img.style.borderRadius = '8px';
+  img.style.margin = '10px 0';
+  img.alt = attachment.name;
+  
+  editorArea.appendChild(img);
+  
+  // Save the updated content
+  page.html = editorArea.innerHTML;
+  page.updatedAt = new Date().toISOString();
+  saveStore();
+  displayPageInfo();
+  
+  // Switch to editor tab
+  document.querySelector('[data-view="editor-view"]').click();
+}
+
+function removeAttachment(attachmentId) {
+  if (!AppState.activePageId) return;
+  
+  const page = Store.pages[AppState.activePageId];
+  const attachment = page.attachments.find(att => att.id === attachmentId);
+  
+  if (confirm(`Rimuovere l'allegato "${attachment.name}"?`)) {
+    page.attachments = page.attachments.filter(att => att.id !== attachmentId);
+    page.updatedAt = new Date().toISOString();
+    saveStore();
+    displayAttachments();
+    displayPageInfo();
+  }
+}
+
+function initCanvasControls() {
+  const clearBtn = getEl('#clear-canvas');
+  const saveBtn = getEl('#save-drawing');
+  
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      if (canvasContext) {
+        const canvas = getEl('#drawing-canvas');
+        canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    });
+  }
+  
+  if (saveBtn) {
+    saveBtn.addEventListener('click', () => {
+      if (!AppState.activePageId) {
+        alert('Seleziona una pagina per salvare il disegno.');
+        return;
+      }
+      
+      const canvas = getEl('#drawing-canvas');
+      const dataURL = canvas.toDataURL();
+      const editorArea = getEl('#editor-area');
+      const img = document.createElement('img');
+      img.src = dataURL;
+      img.style.maxWidth = '100%';
+      img.style.height = 'auto';
+      img.style.borderRadius = '8px';
+      img.style.margin = '10px 0';
+      img.alt = 'Canvas Drawing';
+      
+      editorArea.appendChild(img);
+      
+      // Save the updated content
+      const page = Store.pages[AppState.activePageId];
+      page.html = editorArea.innerHTML;
+      page.updatedAt = new Date().toISOString();
+      saveStore();
+      displayPageInfo();
+      
+      // Switch to editor tab
+      document.querySelector('[data-view="editor-view"]').click();
+      alert('Disegno salvato nell\'editor!');
+    });
+  }
+}
+
+function execCommand(command, value = null) {
+  document.execCommand(command, false, value);
+  getEl('#editor-area').focus();
+  updateToolbarState();
+}
+
+function changeFontFamily(font) {
+  execCommand('fontName', font);
+}
+
+function changeFontSize(size) {
+  execCommand('fontSize', size);
+}
+
+function changeTextColor(color) {
+  execCommand('foreColor', color);
+}
+
+function changeBackgroundColor(color) {
+  execCommand('backColor', color);
+}
+
+function insertLink() {
+  const selection = window.getSelection();
+  const selectedText = selection.toString();
+  
+  const url = prompt('Inserisci URL del link:');
+  if (url) {
+    let linkUrl = url;
+    // Add protocol if missing
+    if (!linkUrl.startsWith('http://') && !linkUrl.startsWith('https://') && !linkUrl.startsWith('mailto:')) {
+      linkUrl = 'https://' + linkUrl;
+    }
+    
+    if (selectedText) {
+      // If text is selected, create link with selected text
+      const link = document.createElement('a');
+      link.href = linkUrl;
+      link.textContent = selectedText;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      range.insertNode(link);
+      range.collapse(false);
+    } else {
+      // If no text selected, prompt for link text
+      const linkText = prompt('Inserisci testo del link:', url);
+      if (linkText) {
+        const link = document.createElement('a');
+        link.href = linkUrl;
+        link.textContent = linkText;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        
+        const range = selection.getRangeAt(0);
+        range.insertNode(link);
+        range.collapse(false);
+      }
+    }
+    
+    // Save the updated content
+    if (AppState.activePageId) {
+      const page = Store.pages[AppState.activePageId];
+      page.html = getEl('#editor-area').innerHTML;
+      page.updatedAt = new Date().toISOString();
+      saveStore();
+      displayPageInfo();
+    }
+  }
+}
+
+function insertImage() {
+  const url = prompt('Inserisci URL dell\'immagine:');
+  if (url) {
+    const img = document.createElement('img');
+    img.src = url;
+    img.style.maxWidth = '100%';
+    img.style.height = 'auto';
+    img.style.borderRadius = '8px';
+    img.style.margin = '10px 0';
+    img.alt = 'Immagine inserita';
+    
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      range.insertNode(img);
+      range.collapse(false);
+    } else {
+      getEl('#editor-area').appendChild(img);
+    }
+    
+    // Save the updated content
+    if (AppState.activePageId) {
+      const page = Store.pages[AppState.activePageId];
+      page.html = getEl('#editor-area').innerHTML;
+      page.updatedAt = new Date().toISOString();
+      saveStore();
+      displayPageInfo();
+    }
+  }
+}
+
+function insertTable() {
+  const rows = prompt('Numero di righe:', '3');
+  const cols = prompt('Numero di colonne:', '3');
+  if (rows && cols) {
+    let tableHTML = '<table border="1" style="border-collapse: collapse; width: 100%; margin: 10px 0; background: var(--bg-secondary);">';
+    for (let i = 0; i < parseInt(rows); i++) {
+      tableHTML += '<tr>';
+      for (let j = 0; j < parseInt(cols); j++) {
+        tableHTML += '<td style="padding: 8px; border: 1px solid var(--border-color); color: var(--text-primary);">&nbsp;</td>';
+      }
+      tableHTML += '</tr>';
+    }
+    tableHTML += '</table>';
+    
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = tableHTML;
+      const table = tempDiv.firstChild;
+      range.insertNode(table);
+      range.collapse(false);
+    } else {
+      getEl('#editor-area').insertAdjacentHTML('beforeend', tableHTML);
+    }
+    
+    // Save the updated content
+    if (AppState.activePageId) {
+      const page = Store.pages[AppState.activePageId];
+      page.html = getEl('#editor-area').innerHTML;
+      page.updatedAt = new Date().toISOString();
+      saveStore();
+      displayPageInfo();
+    }
+  }
+}
+
+function updateToolbarState() {
+  // Update toolbar button states based on current selection
+  const buttons = document.querySelectorAll('.toolbar-btn');
+  buttons.forEach(btn => {
+    const command = btn.getAttribute('onclick');
+    if (command && command.includes('bold')) {
+      btn.classList.toggle('active', document.queryCommandState('bold'));
+    } else if (command && command.includes('italic')) {
+      btn.classList.toggle('active', document.queryCommandState('italic'));
+    } else if (command && command.includes('underline')) {
+      btn.classList.toggle('active', document.queryCommandState('underline'));
+    }
+  });
+}
+
+function init() {
+  // Initialize page title input reference
+  pageTitleInput = getEl('#page-title-input');
+  
+  loadStore();
   setupEventListeners();
-  initApp();
-});
+  initTabs();
+  initPageActions();
+  initCanvasControls();
+  initAttachments();
+  initDragAndDrop(); // Initialize drag and drop functionality
+  initImageResize(); // Initialize image resize functionality
+  refreshUI();
+  
+  // Hide loader and show app
+  setTimeout(() => {
+    getEl('#loader').style.display = 'none';
+    getEl('#app-container').classList.add('loaded');
+  }, 500);
+}
+
+document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
 </html>
