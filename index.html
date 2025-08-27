@@ -211,6 +211,10 @@
     }
     .title-input[readonly] { cursor: pointer; user-select: none;}
     .title-input[readonly]:focus { background: transparent; box-shadow: none; }
+    .title-input:not([readonly]) { 
+      color: var(--text-primary); 
+      cursor: text; 
+    }
 
     .view-container {
       background: var(--bg-primary);
@@ -1739,41 +1743,11 @@ function setupEventListeners() {
       sections: Store.sections,
       pages: Store.pages,
       exportDate: new Date().toISOString(),
-      version: '1.0'
+      version: "1.0"
     };
+    const jsonString = JSON.stringify(exportData, null, 2);
     const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-    downloadFile(`notebook-backup-${timestamp}.json`, JSON.stringify(exportData, null, 2));
-  };
-
-  getEl('#importDataInput').onchange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const importData = JSON.parse(event.target.result);
-        if (importData.notebooks && importData.sections && importData.pages) {
-          if (confirm('Questo sostituirà tutti i dati esistenti. Continuare?')) {
-            Store.notebooks = importData.notebooks;
-            Store.sections = importData.sections;
-            Store.pages = importData.pages;
-            saveStore();
-            AppState.activeNotebookId = null;
-            AppState.activeSectionId = null;
-            AppState.activePageId = null;
-            refreshUI();
-            alert('Dati importati con successo!');
-          }
-        } else {
-          alert('File non valido. Assicurati di importare un backup valido.');
-        }
-      } catch (error) {
-        alert('Errore durante l\'importazione del file.');
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = ''; // Reset input
+    downloadFile(`notebook-backup-${timestamp}.json`, jsonString);
   };
   
   document.addEventListener('click', (e) => {
