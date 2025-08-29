@@ -163,6 +163,18 @@
     .tree-item.active {
         box-shadow: inset 0 0 0 2px var(--accent-primary);
     }
+    /* Stile per l'elemento trascinato */
+    .tree-item.dragging {
+      opacity: 0.5;
+      background: var(--bg-secondary);
+    }
+    /* Stile per indicare dove l'elemento verrà rilasciato */
+    .tree-item.drag-over-top {
+      border-top: 2px solid var(--accent-primary);
+    }
+    .tree-item.drag-over-bottom {
+      border-bottom: 2px solid var(--accent-primary);
+    }
     .page-entry.active {
         background-color: var(--bg-secondary);
         color: var(--accent-secondary);
@@ -583,6 +595,32 @@
     #editor-area table:focus {
       outline: 2px solid var(--accent-primary);
     }
+    /* Stili per le notifiche Toast */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: var(--accent-primary);
+      color: var(--bg-primary);
+      padding: 12px 20px;
+      border-radius: 8px;
+      box-shadow: var(--shadow-dark);
+      z-index: 3000;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s, visibility 0.3s, bottom 0.3s;
+    }
+    .toast.show {
+      opacity: 1;
+      visibility: visible;
+      bottom: 30px;
+    }
+    .empty-state-message {
+        padding: 15px; 
+        color: var(--text-muted);
+        text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -612,8 +650,8 @@
       <div class="panel-header">
         <span id="pages-list-header">Pagine</span>
         <span class="grow"></span>
-        <button id="addSectionBtn" class="btn">+ Sezione</button>
-        <button id="addPageBtn" class="btn">+ Pagina</button>
+        <button id="addSectionBtn" class="btn" title="Aggiungi una nuova sezione al taccuino selezionato">+ Sezione</button>
+        <button id="addPageBtn" class="btn" title="Aggiungi una nuova pagina alla sezione selezionata">+ Pagina</button>
       </div>
       <div id="pages-list" class="tree-list"></div>
     </aside>
@@ -820,6 +858,8 @@
     </div>
   </div>
 </div>
+<!-- Toast Notification Element -->
+<div id="toast-notification" class="toast"></div>
 
 <script>
 /* -------------------- REPO-AWARE BASE PATH -------------------- */
@@ -893,6 +933,16 @@ function makeEditable(inputEl, saveCallback) {
     };
     inputEl.addEventListener('blur', onBlur);
     inputEl.addEventListener('keyup', onKeyup);
+}
+// Funzione per mostrare notifiche "toast"
+function showToast(message, duration = 3000) {
+    const toast = getEl('#toast-notification');
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.add('show');
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, duration);
 }
 
 /* -------------------- IMAGE RESIZE FUNCTIONALITY -------------------- */
@@ -1272,7 +1322,7 @@ document.addEventListener('DOMContentLoaded', () => {
 /* -------------------- CORE STATE & DB -------------------- */
 const DB_KEY = `gpt_notes_v8_${REPO_SEGMENT || 'root'}`;
 let Store = {};
-let AppState = { activeNotebookId: null, activeSectionId: null, activePageId: null };
+let AppState = { activeNotebookId: null, activeSectionId: null, activePageId: null, globalSearchTerm: '' };
 
 const COLOR_PALETTE = ['#e78284','#ea999c','#e5c890','#f0daab','#a6d189','#bde0a8','#8caaee','#a3b8ef','#babbf1','#c8c9f4'];
 const defaultStore = { notebooks: {}, sections: {}, pages: {}, notebookOrder: []};
@@ -1286,7 +1336,7 @@ function loadStore() {
       const notebook = createNotebook('Il mio primo Taccuino', false);
       const section = createSection(notebook.id, 'Appunti veloci', false);
       const page = createPage(section.id, 'Benvenuto!', false);
-      page.html = `<h1>Ciao e benvenuto!</h1><p>Clicca sulla matita ✏️ che appare al passaggio del mouse per rinominare taccuini, sezioni e pagine.</p><p>Imposta un colore e vedrai che verrà ereditato da tutto il contenuto.</p>`;
+      page.html = `<h1>Ciao e benvenuto!</h1><p>Clicca sulla matita ✏️ che appare al passaggio del mouse per rinominare taccuini, sezioni e pagine.</p><p>Imposta un colore e vedrai che verrà ereditato da tutto il contenuto.</p><p>Puoi anche riordinare i taccuini trascinandoli!</p>`;
       saveStore();
     }
   } catch (e) { console.error("Failed to load store", e); Store = JSON.parse(JSON.stringify(defaultStore)); }
@@ -1387,41 +1437,90 @@ function closeColorPalette() { getEl('#color-palette').style.display = 'none'; a
 
 /* -------------------- UI RENDERING -------------------- */
 function displayNotebooks() {
-  const listEl = getEl('#notebooks-list');
-  listEl.innerHTML = '';
-  Store.notebookOrder.forEach(nbId => {
-    const nb = Store.notebooks[nbId]; if (!nb) return;
-    const item = document.createElement('div'); item.className = 'tree-item';
-    if (nb.color) {
-      item.style.backgroundColor = nb.color;
-      item.style.color = getContrastColor(nb.color);
-      if (AppState.activeNotebookId === nbId) item.style.boxShadow = 'inset 0 0 0 2px white';
-    } else { if (AppState.activeNotebookId === nbId) item.classList.add('active'); }
-    const colorDot = document.createElement('div'); colorDot.className = 'color-dot'; colorDot.style.backgroundColor = nb.color || 'transparent';
-    colorDot.title = 'Colore taccuino';
-    colorDot.onclick = (e) => { e.stopPropagation(); openColorPalette({ type: 'notebook', id: nb.id }, colorDot); };
-    const icon = document.createElement('span'); icon.textContent = '📒';
-    const titleInput = document.createElement('input'); titleInput.className = 'title-input grow'; titleInput.value = nb.title; titleInput.readOnly = true;
-    const actions = document.createElement('div'); actions.className = 'actions-container';
-    const editBtn = document.createElement('button'); editBtn.className = 'action-btn'; editBtn.innerHTML = '✏️';
-    editBtn.title = "Rinomina taccuino";
-    editBtn.onclick = (e) => { e.stopPropagation(); makeEditable(titleInput, (newTitle) => { nb.title = newTitle; saveStore(); refreshUI(); }); };
-    const deleteBtn = document.createElement('button'); deleteBtn.className = 'action-btn delete-btn'; deleteBtn.innerHTML = '🗑️';
-    deleteBtn.title = `Elimina il taccuino "${nb.title}"`;
-    deleteBtn.onclick = (e) => { e.stopPropagation(); deleteNotebook(nb.id); };
-    actions.append(editBtn, deleteBtn);
-    item.append(colorDot, icon, titleInput, actions);
-    item.onclick = (e) => { 
-        if(e.target.closest('.actions-container')) return;
-        AppState.activeNotebookId = nb.id;
-        nb.collapsed = !nb.collapsed;
-        AppState.activeSectionId = null; AppState.activePageId = null;
-        saveStore();
-        refreshUI();
-    };
-    listEl.appendChild(item);
-    if (!nb.collapsed && AppState.activeNotebookId === nbId) { nb.sections.forEach(secId => displaySection(secId, listEl)); }
-  });
+    const listEl = getEl('#notebooks-list');
+    listEl.innerHTML = '';
+    const searchTerm = AppState.globalSearchTerm;
+
+    const filteredNotebookIds = Store.notebookOrder.filter(nbId => {
+        const nb = Store.notebooks[nbId];
+        if (!nb) return false;
+        if (!searchTerm) return true;
+        if (nb.title.toLowerCase().includes(searchTerm)) return true;
+        return nb.sections.some(secId => {
+            const sec = Store.sections[secId];
+            if (!sec) return false;
+            if (sec.title.toLowerCase().includes(searchTerm)) return true;
+            return sec.pages.some(pageId => {
+                const page = Store.pages[pageId];
+                return page && page.title.toLowerCase().includes(searchTerm);
+            });
+        });
+    });
+
+    if (filteredNotebookIds.length === 0) {
+        listEl.innerHTML = `<div class="empty-state-message">${searchTerm ? 'Nessun risultato trovato.' : 'Nessun taccuino. Creane uno!'}</div>`;
+        return;
+    }
+
+    filteredNotebookIds.forEach((nbId, index) => {
+        const nb = Store.notebooks[nbId]; if (!nb) return;
+        const item = document.createElement('div');
+        item.className = 'tree-item';
+        item.dataset.notebookId = nbId;
+        item.dataset.index = index;
+        item.setAttribute('draggable', true);
+
+        item.addEventListener('dragstart', handleNotebookDragStart);
+        item.addEventListener('dragover', handleNotebookDragOver);
+        item.addEventListener('dragleave', handleNotebookDragLeave);
+        item.addEventListener('drop', handleNotebookDrop);
+        item.addEventListener('dragend', handleNotebookDragEnd);
+
+        if (nb.color) {
+            item.style.backgroundColor = nb.color;
+            item.style.color = getContrastColor(nb.color);
+            if (AppState.activeNotebookId === nbId) item.style.boxShadow = 'inset 0 0 0 2px white';
+        } else { if (AppState.activeNotebookId === nbId) item.classList.add('active'); }
+        const colorDot = document.createElement('div'); colorDot.className = 'color-dot'; colorDot.style.backgroundColor = nb.color || 'transparent';
+        colorDot.title = 'Colore taccuino';
+        colorDot.onclick = (e) => { e.stopPropagation(); openColorPalette({ type: 'notebook', id: nb.id }, colorDot); };
+        const icon = document.createElement('span'); icon.textContent = '📒';
+        const titleInput = document.createElement('input'); titleInput.className = 'title-input grow'; titleInput.value = nb.title; titleInput.readOnly = true;
+        const actions = document.createElement('div'); actions.className = 'actions-container';
+        const editBtn = document.createElement('button'); editBtn.className = 'action-btn'; editBtn.innerHTML = '✏️';
+        editBtn.title = "Rinomina taccuino";
+        editBtn.onclick = (e) => { e.stopPropagation(); makeEditable(titleInput, (newTitle) => { nb.title = newTitle; saveStore(); refreshUI(); }); };
+        const deleteBtn = document.createElement('button'); deleteBtn.className = 'action-btn delete-btn'; deleteBtn.innerHTML = '🗑️';
+        deleteBtn.title = `Elimina il taccuino "${nb.title}"`;
+        deleteBtn.onclick = (e) => { e.stopPropagation(); deleteNotebook(nb.id); };
+        actions.append(editBtn, deleteBtn);
+        item.append(colorDot, icon, titleInput, actions);
+        item.onclick = (e) => {
+            if (e.target.closest('.actions-container')) return;
+            if (searchTerm) return; // Disabilita collasso durante la ricerca
+            AppState.activeNotebookId = nb.id;
+            nb.collapsed = !nb.collapsed;
+            AppState.activeSectionId = null; AppState.activePageId = null;
+            saveStore();
+            refreshUI();
+        };
+        listEl.appendChild(item);
+        
+        const isExpanded = searchTerm || (!nb.collapsed && AppState.activeNotebookId === nbId);
+        if (isExpanded) {
+            const filteredSectionIds = nb.sections.filter(secId => {
+                const sec = Store.sections[secId];
+                if (!sec) return false;
+                if (!searchTerm) return true;
+                if (sec.title.toLowerCase().includes(searchTerm)) return true;
+                return sec.pages.some(pageId => {
+                    const page = Store.pages[pageId];
+                    return page && page.title.toLowerCase().includes(searchTerm);
+                });
+            });
+            filteredSectionIds.forEach(secId => displaySection(secId, listEl));
+        }
+    });
 }
 
 function displaySection(secId, parentEl) {
@@ -1454,10 +1553,24 @@ function displaySection(secId, parentEl) {
 function displayPages() {
   const listEl = getEl('#pages-list'), headerEl = getEl('#pages-list-header');
   listEl.innerHTML = '';
-  if (!AppState.activeSectionId) { headerEl.textContent = 'Pagine'; listEl.innerHTML = '<div style="padding: 15px; color: var(--text-muted);">Seleziona una sezione</div>'; return; }
+  if (!AppState.activeSectionId) { headerEl.textContent = 'Pagine'; listEl.innerHTML = '<div class="empty-state-message">Seleziona una sezione</div>'; return; }
   const section = Store.sections[AppState.activeSectionId]; if (!section) return;
   headerEl.textContent = section.title;
-  section.pages.forEach(pageId => {
+
+  const searchTerm = AppState.globalSearchTerm;
+  const filteredPageIds = section.pages.filter(pageId => {
+      const page = Store.pages[pageId];
+      if (!page) return false;
+      if (!searchTerm) return true;
+      return page.title.toLowerCase().includes(searchTerm);
+  });
+
+  if (filteredPageIds.length === 0) {
+      listEl.innerHTML = `<div class="empty-state-message">${searchTerm ? 'Nessuna pagina trovata.' : 'Nessuna pagina. Creane una!'}</div>`;
+      return;
+  }
+
+  filteredPageIds.forEach(pageId => {
     const page = Store.pages[pageId]; if (!page) return;
     const item = document.createElement('div'); item.className = 'page-entry';
     const effectiveColor = getEffectiveColor('page', pageId);
@@ -1598,17 +1711,100 @@ function displayPageInfo() {
   `;
 }
 
+function updateDocumentTitle() {
+    let title = 'GPT — A New Note-Taking App';
+    if (AppState.activePageId && Store.pages[AppState.activePageId]) {
+        title = `${Store.pages[AppState.activePageId].title} - GPT`;
+    } else if (AppState.activeNotebookId && Store.notebooks[AppState.activeNotebookId]) {
+        title = `${Store.notebooks[AppState.activeNotebookId].title} - GPT`;
+    }
+    document.title = title;
+}
+
+
 function refreshUI() {
   displayNotebooks(); 
   displayPages(); 
   displayActivePage();
   displayAttachments(); 
-  displayPageInfo(); 
+  displayPageInfo();
+  updateDocumentTitle();
   getEl('#addSectionBtn').disabled = !AppState.activeNotebookId;
   getEl('#addPageBtn').disabled = !AppState.activeSectionId;
 }
 
-/* -------------------- DRAG AND DROP FUNCTIONALITY -------------------- */
+/* -------------------- DRAG AND DROP (NOTEBOOK ORDERING) -------------------- */
+let draggedNotebook = null;
+
+function handleNotebookDragStart(e) {
+    if (AppState.globalSearchTerm) {
+        e.preventDefault();
+        return; // Disabilita drag durante la ricerca
+    }
+    draggedNotebook = this;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', this.dataset.notebookId);
+    setTimeout(() => this.classList.add('dragging'), 0);
+}
+
+function handleNotebookDragOver(e) {
+    e.preventDefault();
+    const target = e.target.closest('.tree-item');
+    if (!target || target === draggedNotebook) return;
+
+    const rect = target.getBoundingClientRect();
+    const middleY = rect.top + rect.height / 2;
+    document.querySelectorAll('.tree-item').forEach(item => {
+        item.classList.remove('drag-over-top', 'drag-over-bottom');
+    });
+    if (e.clientY < middleY) {
+        target.classList.add('drag-over-top');
+    } else {
+        target.classList.add('drag-over-bottom');
+    }
+}
+
+function handleNotebookDragLeave(e) {
+    const target = e.target.closest('.tree-item');
+    if (target) {
+        target.classList.remove('drag-over-top', 'drag-over-bottom');
+    }
+}
+
+function handleNotebookDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const target = e.target.closest('.tree-item');
+    if (!target || !draggedNotebook || target === draggedNotebook) return;
+
+    const draggedId = draggedNotebook.dataset.notebookId;
+    const targetId = target.dataset.notebookId;
+    
+    const draggedIndex = Store.notebookOrder.indexOf(draggedId);
+    let targetIndex = Store.notebookOrder.indexOf(targetId);
+
+    const rect = target.getBoundingClientRect();
+    const middleY = rect.top + rect.height / 2;
+    if (e.clientY > middleY) {
+        targetIndex++;
+    }
+
+    const [removed] = Store.notebookOrder.splice(draggedIndex, 1);
+    Store.notebookOrder.splice(targetIndex, 0, removed);
+
+    saveStore();
+    refreshUI();
+}
+
+function handleNotebookDragEnd() {
+    document.querySelectorAll('.tree-item').forEach(item => {
+        item.classList.remove('dragging', 'drag-over-top', 'drag-over-bottom');
+    });
+    draggedNotebook = null;
+}
+
+
+/* -------------------- DRAG AND DROP (IMAGE UPLOAD) -------------------- */
 function initDragAndDrop() {
   const editorArea = getEl('#editor-area');
   const dropIndicator = editorArea.querySelector('.drop-indicator');
@@ -1738,17 +1934,51 @@ function setupEventListeners() {
   getEl('#addPageBtn').onclick = () => { if(!AppState.activeSectionId) return; const page = createPage(AppState.activeSectionId, 'Nuova Pagina'); AppState.activePageId = page.id; refreshUI(); };
   
   getEl('#exportDataBtn').onclick = () => {
-    const exportData = {
-      notebooks: Store.notebooks,
-      sections: Store.sections,
-      pages: Store.pages,
-      exportDate: new Date().toISOString(),
-      version: "1.0"
-    };
-    const jsonString = JSON.stringify(exportData, null, 2);
+    const exportData = JSON.stringify(Store, null, 2);
     const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-    downloadFile(`notebook-backup-${timestamp}.json`, jsonString);
+    downloadFile(`GPT-backup-${timestamp}.json`, exportData);
+    showToast('Dati esportati con successo!');
   };
+  
+  getEl('#importDataInput').onchange = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!confirm("Sei sicuro di voler importare i dati? L'azione sovrascriverà tutti i dati correnti.")) {
+        event.target.value = ''; // Resetta l'input file
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const importedData = JSON.parse(e.target.result);
+            if (importedData.notebooks && importedData.sections && importedData.pages && importedData.notebookOrder) {
+                Store = importedData;
+                AppState.activeNotebookId = null;
+                AppState.activeSectionId = null;
+                AppState.activePageId = null;
+                saveStore();
+                refreshUI();
+                showToast('Dati importati con successo!');
+            } else {
+                alert('Errore: Il file di backup non sembra valido.');
+            }
+        } catch (error) {
+            console.error("Errore durante l'importazione:", error);
+            alert('Errore: Impossibile leggere il file di backup.');
+        } finally {
+            event.target.value = ''; // Resetta l'input file
+        }
+    };
+    reader.readAsText(file);
+  };
+
+  getEl('#globalSearchInput').addEventListener('input', (e) => {
+      AppState.globalSearchTerm = e.target.value.toLowerCase().trim();
+      displayNotebooks();
+      displayPages();
+  });
   
   document.addEventListener('click', (e) => {
     if (e.target.classList.contains('palette-swatch')) {
