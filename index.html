@@ -116,6 +116,14 @@
       background: rgba(231, 130, 132, 0.1);
       color: #fff;
     }
+    .btn.success {
+      color: var(--success-color);
+      border-color: var(--success-color);
+    }
+    .btn.success:hover {
+      background: rgba(166, 209, 137, 0.1);
+      color: #fff;
+    }
 
     .data-container {
       display: grid;
@@ -635,6 +643,7 @@
     </div>
     <div class="header-actions">
       <button id="addNotebookBtn" class="btn primary">+ Nuovo Taccuino</button>
+      <button id="copyContentBtn" class="btn success" title="Copia il contenuto della pagina corrente">Copia Contenuto</button>
       <button id="exportDataBtn" class="btn">Esporta</button>
       <label class="btn" for="importDataInput">Importa</label>
       <input id="importDataInput" type="file" accept="application/json" class="hidden" />
@@ -943,6 +952,43 @@ function showToast(message, duration = 3000) {
     setTimeout(() => {
         toast.classList.remove('show');
     }, duration);
+}
+
+// Funzione per copiare il contenuto della pagina
+function copyPageContent() {
+  if (!AppState.activePageId) {
+    showToast('Seleziona una pagina prima di copiare il contenuto', 2000);
+    return;
+  }
+  
+  const page = Store.pages[AppState.activePageId];
+  const title = page.title;
+  const content = page.html;
+  
+  // Creiamo un testo formattato per la clipboard
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = content;
+  const plainText = tempDiv.textContent || tempDiv.innerText || '';
+  
+  // Creiamo un elemento textarea per copiare il testo formattato
+  const textarea = document.createElement('textarea');
+  textarea.value = `# ${title}\n\n${plainText}`;
+  document.body.appendChild(textarea);
+  textarea.select();
+  
+  try {
+    const successful = document.execCommand('copy');
+    document.body.removeChild(textarea);
+    
+    if (successful) {
+      showToast('Contenuto copiato negli appunti!', 2000);
+    } else {
+      showToast('Impossibile copiare il contenuto', 2000);
+    }
+  } catch (err) {
+    document.body.removeChild(textarea);
+    showToast('Errore durante la copia: ' + err, 2000);
+  }
 }
 
 /* -------------------- IMAGE RESIZE FUNCTIONALITY -------------------- */
@@ -1930,6 +1976,10 @@ function setupEventListeners() {
       refreshUI();
     }
   };
+  
+  // Aggiunto listener per il bottone di copia
+  getEl('#copyContentBtn').onclick = copyPageContent;
+  
   getEl('#addSectionBtn').onclick = () => { if(!AppState.activeNotebookId) return; const sec = createSection(AppState.activeNotebookId, 'Nuova Sezione'); AppState.activeSectionId = sec.id; refreshUI(); };
   getEl('#addPageBtn').onclick = () => { if(!AppState.activeSectionId) return; const page = createPage(AppState.activeSectionId, 'Nuova Pagina'); AppState.activePageId = page.id; refreshUI(); };
   
@@ -1966,7 +2016,7 @@ function setupEventListeners() {
             }
         } catch (error) {
             console.error("Errore durante l'importazione:", error);
-            alert('Errore: Impossibile leggere il file di backup.');
+            alert('Errore: Impossibile leggere il file de backup.');
         } finally {
             event.target.value = ''; // Resetta l'input file
         }
